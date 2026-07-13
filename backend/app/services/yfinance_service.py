@@ -86,19 +86,70 @@ class YFinanceService:
             news_items = []
             if raw_news:
                 for item in raw_news:
-                    # Convert timestamp (seconds since epoch) to ISO format
+                    # Deterministic hash fallback for ID if uuid is missing
+                    news_id = item.get("uuid") or item.get("id")
+                    if not news_id:
+                        import hashlib
+                        link = item.get("link") or ""
+                        title = item.get("title") or ""
+                        if link or title:
+                            news_id = hashlib.md5((link + title).encode("utf-8")).hexdigest()
+                        else:
+                            import uuid
+                            news_id = str(uuid.uuid4())
+
+                    # Ensure published_at is not null
                     pub_time = item.get("providerPublishTime")
-                    published_at = datetime.utcfromtimestamp(pub_time).isoformat() + "Z" if pub_time else None
+                    if pub_time:
+                        published_at = datetime.utcfromtimestamp(pub_time).isoformat() + "Z"
+                    else:
+                        published_at = datetime.utcnow().isoformat() + "Z"
+
+                    # Ensure title is not null
+                    title = item.get("title") or "No Title"
                     
                     news_items.append({
-                        "id": item.get("uuid"),
-                        "title": item.get("title"),
-                        "source": item.get("publisher"),
-                        "url": item.get("link"),
+                        "id": news_id,
+                        "title": title,
+                        "source": item.get("publisher") or "Unknown Source",
+                        "url": item.get("link") or "",
                         "published_at": published_at,
-                        "summary": item.get("summary", "")
+                        "summary": item.get("summary") or ""
                     })
             return news_items
         except Exception as e:
             # Fallback to empty news list if news API fails
             return []
+
+    @staticmethod
+    def search_symbols(query: str) -> List[Dict[str, Any]]:
+        """
+        Query Yahoo Finance autocomplete search suggestion API.
+        """
+        try:
+            import httpx
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}"
+            res = httpx.get(url, headers=headers)
+            if res.status_code == 200:
+                data = res.json()
+                quotes = data.get("quotes", [])
+                
+                results = []
+                for q in quotes:
+                    quote_type = q.get("quoteType", "")
+                    if quote_type in ["EQUITY", "ETF"]:
+                        results.append({
+                            "symbol": q.get("symbol", "").upper(),
+                            "name": q.get("shortname") or q.get("longname") or q.get("symbol", ""),
+                            "exchange": q.get("exchDisp") or q.get("exchange") or "N/A",
+                            "type": quote_type
+                        })
+                return results
+            return []
+        except Exception as e:
+            print(f"Error in search_symbols: {e}")
+            return []
+

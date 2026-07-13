@@ -1,0 +1,245 @@
+import os
+import json
+import logging
+from typing import Dict, Any, List, Optional
+import google.generativeai as genai
+from pydantic import BaseModel, Field
+
+from app.config import settings
+
+# Setup logging
+logger = logging.getLogger(__name__)
+
+# --- Response Schemas (Pydantic Models for Structured Output) ---
+
+class NewsSummarySchema(BaseModel):
+    overall_sentiment: str = Field(description="Overall sentiment: BULLISH, BEARISH, or NEUTRAL")
+    sentiment_score: float = Field(description="Numeric score representing sentiment from -1.0 (most bearish) to 1.0 (most bullish)")
+    key_themes: List[str] = Field(description="Core themes identified in the news articles")
+    summary_points: List[str] = Field(description="Key takeaway bullet points summarizing the news")
+
+class ResearchNoteSchema(BaseModel):
+    recommendation: str = Field(description="Investment recommendation: BUY, HOLD, or SELL")
+    target_price: float = Field(description="Estimated 12-month target price")
+    investment_thesis: str = Field(description="Detailed explanation of the investment thesis")
+    key_catalysts: List[str] = Field(description="Key events or catalysts that could drive the stock price")
+    key_risks: List[str] = Field(description="Key risks to the investment thesis")
+    valuation_summary: str = Field(description="Brief valuation modeling summary")
+
+class SectorOutlookSchema(BaseModel):
+    sector: str = Field(description="Name of the sector")
+    performance: str = Field(description="Short-term performance summary (e.g. Strong, Weak, Stable)")
+    outlook: str = Field(description="Brief outlook summary")
+
+class MarketPulseSchema(BaseModel):
+    market_condition: str = Field(description="Overall market condition: BULLISH, BEARISH, or SIDEWAYS")
+    pulse_summary: str = Field(description="High-level narrative summarizing current market trends and conditions")
+    top_sectors: List[SectorOutlookSchema] = Field(description="Outlook for key market sectors")
+    market_drivers: List[str] = Field(description="Core macroeconomic or technical factors driving the market")
+    macro_trends: List[str] = Field(description="Macro economic trends to watch")
+
+# --- Gemini Service Implementation ---
+
+class GeminiService:
+    def __init__(self):
+        self.is_configured = False
+        api_key = settings.gemini_api_key or os.environ.get("GEMINI_API_KEY")
+        
+        if api_key and api_key != "your_gemini_api_key":
+            try:
+                genai.configure(api_key=api_key)
+                self.is_configured = True
+                # Using gemini-2.5-flash as the default model
+                self.model_name = "gemini-2.5-flash"
+                logger.info(f"Gemini service initialized using model {self.model_name}.")
+            except Exception as e:
+                logger.error(f"Failed to initialize Gemini: {str(e)}")
+        else:
+            logger.warning("GEMINI_API_KEY not configured. Running Gemini in mock mode.")
+
+    def _call_gemini(self, prompt: str, schema_class: Any) -> Dict[str, Any]:
+        """
+        Helper method to request structured JSON from Gemini.
+        Falls back to mock responses if not configured.
+        """
+        if not self.is_configured:
+            return self._generate_mock_data(schema_class)
+            
+        try:
+            model = genai.GenerativeModel(self.model_name)
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema_class,
+                    temperature=0.2
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            logger.error(f"Gemini API call failed: {str(e)}. Falling back to mock data.")
+            return self._generate_mock_data(schema_class)
+
+    def summarize_news(self, symbol: str, news_items: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Generate a structured news summary and sentiment analysis for a given ticker's news.
+        """
+        if not news_items:
+            return {
+                "overall_sentiment": "NEUTRAL",
+                "sentiment_score": 0.0,
+                "key_themes": ["No recent news available"],
+                "summary_points": ["No news updates were found to summarize."]
+            }
+            
+        formatted_news = "\n\n".join([
+            f"Title: {item['title']}\nSource: {item['source']}\nSummary: {item['summary']}"
+            for item in news_items
+        ])
+        
+        prompt = f"""
+        Analyze the following news articles for {symbol}. 
+        Provide a structured JSON news summary containing:
+        - Overall market sentiment towards the stock (BULLISH, BEARISH, NEUTRAL).
+        - Sentiment score from -1.0 (very negative) to 1.0 (very positive).
+        - The core themes identified in the articles.
+        - bullet points highlighting key events, product launches, financial updates, or regulatory notices.
+
+        News articles:
+        {formatted_news}
+        """
+        return self._call_gemini(prompt, NewsSummarySchema)
+
+    def generate_research_note(self, ticker_info: Dict[str, Any], price_history: List[Dict[str, Any]], news_summary: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate a structured equity research note combining fundamentals, technical action, and news sentiment.
+        """
+        # Format fundamentals
+        fundamentals = f"""
+        Company Name: {ticker_info.get('name')}
+        Sector: {ticker_info.get('sector')}
+        Industry: {ticker_info.get('industry')}
+        Market Cap: {ticker_info.get('market_cap')}
+        P/E Ratio: {ticker_info.get('pe_ratio')}
+        Description: {ticker_info.get('description')[:500]}...
+        """
+        
+        # Format recent prices (take last 5 days to keep it concise)
+        recent_prices = "\n".join([
+            f"Date: {p['date']} | Close: {p['close']} | Volume: {p['volume']}"
+            for p in price_history[-5:]
+        ]) if price_history else "No price history available"
+
+        # News summary format
+        news_sentiment = f"""
+        Sentiment: {news_summary.get('overall_sentiment')} (Score: {news_summary.get('sentiment_score')})
+        Key Takeaways: {', '.join(news_summary.get('summary_points', []))}
+        """
+
+        prompt = f"""
+        You are a senior equity research analyst. Generate a structured JSON research note for {ticker_info.get('symbol')}.
+        Incorporate the following information:
+        
+        [Fundamentals]
+        {fundamentals}
+
+        [Recent Technical Actions]
+        {recent_prices}
+
+        [News Sentiment]
+        {news_sentiment}
+
+        Your research note must include:
+        1. An overall investment recommendation: BUY, HOLD, or SELL.
+        2. A target price (estimate a reasonable 12-month target based on recent close prices and fundamentals).
+        3. A solid investment thesis justifying the recommendation.
+        4. Core short/medium term catalysts.
+        5. Crucial investment risks.
+        6. A valuation summary narrative.
+        """
+        return self._call_gemini(prompt, ResearchNoteSchema)
+
+    def generate_market_pulse(self, tickers_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Generate a global market pulse report based on aggregate data from all tracked tickers.
+        """
+        if not tickers_data:
+            return self._generate_mock_data(MarketPulseSchema)
+
+        portfolio_summary = "\n\n".join([
+            f"Symbol: {t['symbol']}\nName: {t['name']}\nSector: {t['sector']}\nMarket Cap: {t.get('market_cap')}\nP/E: {t.get('pe_ratio')}\n"
+            for t in tickers_data
+        ])
+
+        prompt = f"""
+        Analyze the overall market condition based on the following tracked equity portfolio metrics:
+        
+        {portfolio_summary}
+
+        Generate a structured JSON market pulse analysis report including:
+        - Overall market condition (BULLISH, BEARISH, SIDEWAYS).
+        - A general narrative summary of market trends, risks, and developments.
+        - Outlook and performance trends for key sectors present in the data.
+        - Top market drivers (macro or portfolio-specific factors).
+        - Notable macro-economic trends to watch.
+        """
+        return self._call_gemini(prompt, MarketPulseSchema)
+
+    def _generate_mock_data(self, schema_class: Any) -> Dict[str, Any]:
+        """
+        Returns mock JSON data matching the requested schema for testing without an API key.
+        """
+        if schema_class == NewsSummarySchema:
+            return {
+                "overall_sentiment": "BULLISH",
+                "sentiment_score": 0.65,
+                "key_themes": ["Strong demand", "AI Product updates"],
+                "summary_points": [
+                    "Recent news shows highly positive consumer feedback on new features.",
+                    "Earnings expectations remain stable with minor upward revisions.",
+                    "Expanded partnerships in the cloud infrastructure division."
+                ]
+            }
+        elif schema_class == ResearchNoteSchema:
+            return {
+                "recommendation": "BUY",
+                "target_price": 345.0,
+                "investment_thesis": "The company continues to expand its high-margin services division while defending its core hardware margins, indicating strong cash flow generation.",
+                "key_catalysts": [
+                    "Upcoming product hardware launch in Q3.",
+                    "Sustained double-digit growth in cloud services revenues."
+                ],
+                "key_risks": [
+                    "Heightened global antitrust regulatory scrutiny.",
+                    "Supply chain bottlenecks in semiconductor modules."
+                ],
+                "valuation_summary": "Trading at a discount to historical multiples relative to long-term secular growth rate."
+            }
+        elif schema_class == MarketPulseSchema:
+            return {
+                "market_condition": "BULLISH",
+                "pulse_summary": "The broader market indices display robust momentum, led by mega-cap technology and healthcare stocks, supported by positive macroeconomic indicators.",
+                "top_sectors": [
+                    {
+                        "sector": "Technology",
+                        "performance": "Strong",
+                        "outlook": "Sustained secular growth driven by enterprise software and AI investments."
+                    },
+                    {
+                        "sector": "Consumer Discretionary",
+                        "performance": "Stable",
+                        "outlook": "Resilient consumer spend patterns supporting standard retail valuations."
+                    }
+                ],
+                "market_drivers": [
+                    "Cooling inflation reports bolstering monetary easing sentiment.",
+                    "Strong corporate earnings season surpassing consensus beats."
+                ],
+                "macro_trends": [
+                    "Evolving global supply routing policies.",
+                    "Adoption of deep learning automation across traditional industries."
+                ]
+            }
+        return {}
+
+gemini_service = GeminiService()

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme {
+  /* System Dark Colors */
+  --color-background: #070a14;
+  --color-foreground: #f8fafc;
+  
+  /* Brand/Terminal specific colors */
+  --color-panel-bg: #0c1020;
+  --color-panel-border: rgba(255, 255, 255, 0.06);
+  --color-panel-hover: rgba(255, 255, 255, 0.02);
+  
+  /* Financial Accent Colors */
+  --color-bullish: #10b981;
+  --color-bearish: #f43f5e;
+  --color-neutral-accent: #64748b;
+  --color-glow-blue: #3b82f6;
+  
+  /* Fonts mapping */
+  --font-sans: var(--font-geist-sans), Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  overflow-x: hidden;
+}
+
+/* Glassmorphism panel helper */
+.glass-panel {
+  background: rgba(12, 16, 32, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+.glass-panel-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(12, 16, 32, 0.85);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Custom Scrollbar for premium trading feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #070a14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glowing text effects */
+.glow-text-blue {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.glow-text-green {
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.glow-text-red {
+  text-shadow: 0 0 10px rgba(244, 63, 94, 0.5);
+}
+
+/* Animation utilities */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s infinite ease-in-out;
+}

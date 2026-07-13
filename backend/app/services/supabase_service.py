@@ -78,7 +78,7 @@ class SupabaseService:
                 })
             
             # Chunk operations if too large (Supabase limits size, but yfinance 1y is 252 rows which is fine)
-            res = self.client.table("price_history").upsert(db_records).execute()
+            res = self.client.table("price_history").upsert(db_records, on_conflict="ticker_symbol,date").execute()
             return res.data
         except Exception as e:
             logger.error(f"Supabase upsert_price_history error: {str(e)}")
@@ -132,5 +132,82 @@ class SupabaseService:
             "price_history": list(reversed(prices_res.data)), # Order chronologically for graphs
             "news": news_res.data
         }
+
+    def upsert_ticker_analysis(self, symbol: str, news_summary: Dict[str, Any], research_note: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Upsert AI research notes and news summaries for a ticker.
+        """
+        if not self.client:
+            logger.warning("Supabase client not configured. Skipping upsert_ticker_analysis.")
+            return {"ticker_symbol": symbol, "news_summary": news_summary, "research_note": research_note}
+        try:
+            db_data = {
+                "ticker_symbol": symbol.upper(),
+                "news_summary": news_summary,
+                "research_note": research_note,
+                "updated_at": "now()"
+            }
+            res = self.client.table("ticker_analysis").upsert(db_data).execute()
+            return res.data[0] if res.data else db_data
+        except Exception as e:
+            logger.error(f"Supabase upsert_ticker_analysis error: {str(e)}")
+            raise e
+
+    def insert_market_pulse(self, pulse_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Insert a new global market pulse record.
+        """
+        if not self.client:
+            logger.warning("Supabase client not configured. Skipping insert_market_pulse.")
+            return {"pulse_data": pulse_data}
+        try:
+            db_data = {
+                "pulse_data": pulse_data,
+                "created_at": "now()"
+            }
+            res = self.client.table("market_pulse").insert(db_data).execute()
+            return res.data[0] if res.data else db_data
+        except Exception as e:
+            logger.error(f"Supabase insert_market_pulse error: {str(e)}")
+            raise e
+
+    def get_ticker_analysis(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch cached AI analysis for a specific ticker.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not configured.")
+        try:
+            res = self.client.table("ticker_analysis").select("*").eq("ticker_symbol", symbol.upper()).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Supabase get_ticker_analysis error: {str(e)}")
+            raise e
+
+    def get_latest_market_pulse(self) -> Optional[Dict[str, Any]]:
+        """
+        Fetch the most recent cached global market pulse.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not configured.")
+        try:
+            res = self.client.table("market_pulse").select("*").order("created_at", desc=True).limit(1).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Supabase get_latest_market_pulse error: {str(e)}")
+            raise e
+
+    def get_all_tickers(self) -> List[Dict[str, Any]]:
+        """
+        Fetch all tracked tickers from the database.
+        """
+        if not self.client:
+            raise RuntimeError("Supabase client not configured.")
+        try:
+            res = self.client.table("tickers").select("*").execute()
+            return res.data
+        except Exception as e:
+            logger.error(f"Supabase get_all_tickers error: {str(e)}")
+            raise e
 
 supabase_service = SupabaseService()

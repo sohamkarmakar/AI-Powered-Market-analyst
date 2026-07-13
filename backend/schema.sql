@@ -67,3 +67,7 @@ CREATE TRIGGER update_tickers_modtime
     BEFORE UPDATE ON tickers
     FOR EACH ROW
     EXECUTE FUNCTION update_modified_column();
+-- Disable Row Level Security (RLS) so the API can read/write using the anon public key
+ALTER TABLE tickers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE price_history DISABLE ROW LEVEL SECURITY;
+ALTER TABLE news DISABLE ROW LEVEL SECURITY;

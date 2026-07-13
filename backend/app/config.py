@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     supabase_url: Optional[str] = None
     supabase_key: Optional[str] = None
 
+    # Gemini API Key
+    gemini_api_key: Optional[str] = None
+
     # Load from a .env file if it exists
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
