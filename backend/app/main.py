@@ -331,9 +331,50 @@ def get_indices() -> Dict[str, Any]:
 def get_ticker_data(symbol: str, period: str = "1y", interval: str = "1d") -> Dict[str, Any]:
     symbol_upper = normalize_symbol(symbol.upper())
     try:
+        import yfinance as yf
         info    = YFinanceService.get_ticker_info(symbol_upper)
         history = YFinanceService.get_ohlcv(symbol_upper, period=period, interval=interval)
         news    = YFinanceService.get_news(symbol_upper)
+
+        # ── Enrich info with live fast_info fields ─────────────────────────
+        try:
+            t  = yf.Ticker(symbol_upper)
+            fi = t.fast_info
+            raw_info = t.info or {}
+
+            def _f(v):
+                try:
+                    f = float(v)
+                    return None if (f != f) else round(f, 2)
+                except Exception:
+                    return None
+
+            price     = getattr(fi, "last_price", None)
+            prev      = getattr(fi, "previous_close", None) or raw_info.get("previousClose")
+            chg       = round(float(price) - float(prev), 2) if price and prev else None
+            chg_pct   = round(chg / float(prev) * 100, 2)    if chg  and prev else None
+
+            info.update({
+                "current_price":  _f(price),
+                "open":           _f(getattr(fi, "open", None)) or _f(raw_info.get("open")),
+                "prev_close":     _f(prev),
+                "change":         chg,
+                "change_pct":     chg_pct,
+                "day_high":       _f(getattr(fi, "day_high", None)),
+                "day_low":        _f(getattr(fi, "day_low",  None)),
+                "year_high":      _f(getattr(fi, "year_high", None)),
+                "year_low":       _f(getattr(fi, "year_low",  None)),
+                "volume":         int(getattr(fi, "last_volume", 0) or 0) or None,
+                "avg_volume":     raw_info.get("averageVolume") or raw_info.get("averageDailyVolume10Day"),
+                "market_cap":     info.get("market_cap") or (int(getattr(fi, "market_cap", 0) or 0) or None),
+                "beta":           _f(raw_info.get("beta")),
+                "market_state":   raw_info.get("marketState", "REGULAR"),
+                "fifty_day_avg":  _f(raw_info.get("fiftyDayAverage")),
+                "two_hundred_day_avg": _f(raw_info.get("twoHundredDayAverage")),
+            })
+        except Exception:
+            pass  # fast_info enrichment is best-effort
+
         return {"symbol": symbol_upper, "info": info, "price_history": history, "news": news}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -680,39 +721,27 @@ def get_recommendations(symbol: str) -> Dict[str, Any]:
         info = t.info or {}
 
         trend = {"strong_buy": 0, "buy": 0, "hold": 0, "sell": 0, "strong_sell": 0}
+        # yfinance recommendations DataFrame has columns: period, strongBuy, buy, hold, sell, strongSell
+        # (no per-firm data for Indian stocks)
         try:
-            rs = t.recommendations_summary
+            rs = t.recommendations
             if rs is not None and not rs.empty:
-                row = rs.iloc[0]
+                row = rs.iloc[0]   # most recent period ("0m")
                 trend = {
-                    "strong_buy":  int(row.get("strongBuy",  0) or 0),
-                    "buy":         int(row.get("buy",         0) or 0),
-                    "hold":        int(row.get("hold",        0) or 0),
-                    "sell":        int(row.get("sell",        0) or 0),
-                    "strong_sell": int(row.get("strongSell", 0) or 0),
+                    "strong_buy":  int(row["strongBuy"])  if "strongBuy"  in rs.columns else 0,
+                    "buy":         int(row["buy"])         if "buy"         in rs.columns else 0,
+                    "hold":        int(row["hold"])        if "hold"        in rs.columns else 0,
+                    "sell":        int(row["sell"])        if "sell"        in rs.columns else 0,
+                    "strong_sell": int(row["strongSell"]) if "strongSell" in rs.columns else 0,
                 }
         except Exception:
             pass
 
-        recent: List[Dict] = []
-        try:
-            recs = t.recommendations
-            if recs is not None and not recs.empty:
-                for _, row in recs.head(12).iterrows():
-                    recent.append({
-                        "firm": str(row.get("Firm", "N/A")),
-                        "to_grade": str(row.get("To Grade", "N/A")),
-                        "from_grade": str(row.get("From Grade", "")),
-                        "action": str(row.get("Action", "N/A")),
-                    })
-        except Exception:
-            pass
-
         return {
-            "symbol": sym, "trend": trend, "recent": recent,
-            "target_high": info.get("targetHighPrice"),
-            "target_low":  info.get("targetLowPrice"),
-            "target_mean": info.get("targetMeanPrice"),
+            "symbol": sym, "trend": trend,
+            "target_high":   info.get("targetHighPrice"),
+            "target_low":    info.get("targetLowPrice"),
+            "target_mean":   info.get("targetMeanPrice"),
             "target_median": info.get("targetMedianPrice"),
             "recommendation_key": info.get("recommendationKey"),
             "analyst_count": info.get("numberOfAnalystOpinions"),
@@ -733,14 +762,43 @@ def get_ticker_news(symbol: str) -> Dict[str, Any]:
         raw_news = t.news or []
         articles = []
         for item in raw_news[:20]:
-            articles.append({
-                "title": item.get("title", ""),
-                "publisher": item.get("publisher", ""),
-                "link": item.get("link", ""),
-                "published_at": item.get("providerPublishTime", 0),
-                "type": item.get("type", "STORY"),
-                "thumbnail": (item.get("thumbnail") or {}).get("resolutions", [{}])[0].get("url") if item.get("thumbnail") else None,
-            })
+            # yfinance >= 0.2.x uses nested 'content' dict
+            content = item.get("content") or {}
+            if content:
+                # New format
+                click_url = content.get("clickThroughUrl") or {}
+                provider  = content.get("provider") or {}
+                thumb     = content.get("thumbnail") or {}
+                resolutions = thumb.get("resolutions") or []
+                thumb_url   = resolutions[0].get("url") if resolutions else None
+                # pubDate is ISO string e.g. "2025-07-14T10:00:00Z"
+                pub_str = content.get("pubDate") or ""
+                pub_ts  = 0
+                try:
+                    from datetime import datetime, timezone
+                    pub_ts = int(datetime.fromisoformat(pub_str.replace("Z","+00:00")).timestamp()) if pub_str else 0
+                except Exception:
+                    pass
+                articles.append({
+                    "title":        content.get("title", ""),
+                    "publisher":    provider.get("displayName") or provider.get("name", ""),
+                    "link":         click_url.get("url") or content.get("canonicalUrl", {}).get("url", ""),
+                    "published_at": pub_ts,
+                    "type":         content.get("contentType", "STORY"),
+                    "thumbnail":    thumb_url,
+                    "summary":      content.get("summary", ""),
+                })
+            else:
+                # Old format (yfinance < 0.2)
+                articles.append({
+                    "title":        item.get("title", ""),
+                    "publisher":    item.get("publisher", ""),
+                    "link":         item.get("link", ""),
+                    "published_at": item.get("providerPublishTime", 0),
+                    "type":         item.get("type", "STORY"),
+                    "thumbnail":    (item.get("thumbnail") or {}).get("resolutions", [{}])[0].get("url") if item.get("thumbnail") else None,
+                    "summary":      "",
+                })
         return {"symbol": sym, "news": articles}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

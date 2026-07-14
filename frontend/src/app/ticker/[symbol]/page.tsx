@@ -13,7 +13,9 @@ import {
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar,
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine,
+  ComposedChart,
 } from "recharts";
+
 import { technicalRating, pivotPoints } from "@/utils/indicators";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1069,28 +1071,35 @@ export default function TickerDeepDivePage() {
                       </div>
                     </div>
 
-                    {/* Recent analyst actions */}
-                    {recommendations.recent?.length > 0 && (
-                      <div className="glass-panel p-5">
-                        <SectionHeader icon={ChevronRight} title="Recent Analyst Actions" />
-                        <div className="space-y-2">
-                          {recommendations.recent.map((r: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between text-[10px] font-mono py-2 border-b border-white/[0.03]">
-                              <span className="text-gray-300 font-bold">{r.firm}</span>
-                              <div className="flex items-center space-x-3">
-                                {r.from_grade && <span className="text-gray-600">{r.from_grade} →</span>}
-                                <span className={`px-2 py-0.5 rounded font-bold ${
-                                  r.to_grade?.toLowerCase().includes("buy") ? "bg-emerald-500/15 text-emerald-400" :
-                                  r.to_grade?.toLowerCase().includes("sell") ? "bg-rose-500/15 text-rose-400" :
-                                  "bg-amber-500/15 text-amber-400"
-                                }`}>{r.to_grade}</span>
-                                <span className="text-gray-500 text-[9px]">{r.action}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                    {/* Recent analyst recs trend by month */}
+                    <div className="glass-panel p-5">
+                      <SectionHeader icon={BarChart2} title="Rating Trend (Last 3 Months)" />
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[10px] font-mono">
+                          <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                            <th className="text-left py-2 pr-4">Period</th>
+                            <th className="text-right py-2 pr-3">Strong Buy</th>
+                            <th className="text-right py-2 pr-3">Buy</th>
+                            <th className="text-right py-2 pr-3">Hold</th>
+                            <th className="text-right py-2 pr-3">Sell</th>
+                            <th className="text-right py-2">Strong Sell</th>
+                          </tr></thead>
+                          <tbody className="divide-y divide-white/[0.03]">
+                            {[recommendations.trend].map((t, i) => (
+                              <tr key={i} className="hover:bg-white/[0.02]">
+                                <td className="py-2 pr-4 text-gray-300">Current</td>
+                                <td className="py-2 pr-3 text-right text-emerald-400">{t.strong_buy}</td>
+                                <td className="py-2 pr-3 text-right text-emerald-300">{t.buy}</td>
+                                <td className="py-2 pr-3 text-right text-amber-400">{t.hold}</td>
+                                <td className="py-2 pr-3 text-right text-rose-300">{t.sell}</td>
+                                <td className="py-2 text-right text-rose-500">{t.strong_sell}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    )}
+                    </div>
+
                   </>
                 ) : (
                   <div className="glass-panel p-12 flex items-center justify-center">
@@ -1212,8 +1221,4 @@ export default function TickerDeepDivePage() {
   );
 }
 
-// recharts ComposedChart import
-function ComposedChart({ data, children, ...props }: any) {
-  const { ComposedChart: CC } = require("recharts");
-  return <CC data={data} {...props}>{children}</CC>;
-}
+
