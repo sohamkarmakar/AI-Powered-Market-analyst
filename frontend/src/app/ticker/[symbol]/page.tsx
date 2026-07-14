@@ -268,7 +268,7 @@ export default function TickerDeepDivePage() {
                 </div>
                 <h4 className="text-sm text-gray-400 font-medium mt-1">{tickerInfo.name}</h4>
                 <div className="flex space-x-1.5 mt-3">
-                  {["1mo", "3mo", "6mo", "1y"].map((p) => (
+                  {["1mo", "3mo", "6mo", "1y", "2y"].map((p) => (
                     <button
                       key={p}
                       onClick={() => setTimeframe(p)}
@@ -278,7 +278,7 @@ export default function TickerDeepDivePage() {
                           : "bg-slate-800/60 text-gray-400 hover:text-white"
                       }`}
                     >
-                      {p === "1mo" ? "1M" : p === "3mo" ? "3M" : p === "6mo" ? "6M" : "1Y"}
+                      {p === "1mo" ? "1M" : p === "3mo" ? "3M" : p === "6mo" ? "6M" : p === "1y" ? "1Y" : "2Y"}
                     </button>
                   ))}
                 </div>
@@ -354,7 +354,7 @@ export default function TickerDeepDivePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Chart Area */}
             <div className="lg:col-span-8 min-h-[400px]">
-              <PriceChart data={priceHistory} />
+              <PriceChart data={priceHistory} liveSymbol={symbol} />
             </div>
 
             {/* Indicator Details & Sentiment Sidebar */}

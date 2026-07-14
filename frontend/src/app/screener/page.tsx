@@ -6,7 +6,8 @@ import {
   Plus, X, Search, ArrowUpRight, ArrowDownRight,
   TrendingUp, TrendingDown, BarChart2, Activity,
   RefreshCw, ChevronUp, ChevronDown, ExternalLink,
-  Info, Star, Layers, Wifi, WifiOff, Clock
+  Info, Star, Layers, Wifi, WifiOff, Clock,
+  Pencil, GripVertical, Trash2, CheckCircle2
 } from "lucide-react";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
 
@@ -278,6 +279,123 @@ function DetailPanel({ quote, intraday, onClose }: { quote: Quote; intraday: Int
 // Main Component
 // ─────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────
+// Edit Panel Component
+// ─────────────────────────────────────────────────────────
+
+function EditPanel({
+  watchlist,
+  onSave,
+  onClose,
+}: {
+  watchlist: string[];
+  onSave: (list: string[]) => void;
+  onClose: () => void;
+}) {
+  const [localList, setLocalList] = useState<string[]>([...watchlist]);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  const removeItem = (idx: number) => {
+    setLocalList(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setOverIdx(idx);
+  };
+  const handleDrop = () => {
+    if (dragIdx === null || overIdx === null || dragIdx === overIdx) {
+      setDragIdx(null); setOverIdx(null); return;
+    }
+    const next = [...localList];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(overIdx, 0, moved);
+    setLocalList(next);
+    setDragIdx(null); setOverIdx(null);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="relative w-[420px] max-h-[80vh] bg-[#080d1a] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)]">
+          <div className="flex items-center space-x-2">
+            <Pencil className="w-4 h-4 text-blue-400" />
+            <h3 className="text-sm font-bold text-white">Edit Watchlist</h3>
+            <span className="text-[10px] font-mono text-gray-500">{localList.length} stocks</span>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white cursor-pointer transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Instructions */}
+        <div className="px-5 py-2.5 bg-blue-500/5 border-b border-blue-500/10">
+          <p className="text-[10px] font-mono text-blue-400">Drag to reorder · Click ✕ to remove · Changes saved on Apply</p>
+        </div>
+
+        {/* Draggable list */}
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+          {localList.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-xs font-mono text-gray-600">Watchlist is empty. Add stocks from the search bar.</p>
+            </div>
+          ) : localList.map((sym, idx) => (
+            <div
+              key={sym}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={e => handleDragOver(e, idx)}
+              onDrop={handleDrop}
+              onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+              className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl border transition-all cursor-grab active:cursor-grabbing ${
+                overIdx === idx && dragIdx !== idx
+                  ? "border-blue-500/40 bg-blue-500/10"
+                  : "border-white/[0.04] bg-white/[0.02] hover:border-white/10"
+              }`}
+            >
+              <GripVertical className="w-4 h-4 text-gray-600 shrink-0" />
+              <span className="flex-1 text-xs font-mono font-bold text-white">{sym}</span>
+              <button
+                onClick={() => removeItem(idx)}
+                className="p-1 text-gray-600 hover:text-rose-400 transition-colors cursor-pointer rounded"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-5 py-4 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between gap-3">
+          <button
+            onClick={() => setLocalList([])}
+            className="flex items-center space-x-1.5 text-[11px] font-mono text-rose-400 hover:text-rose-300 cursor-pointer transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear All</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-xs font-mono text-gray-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl cursor-pointer transition-all">
+              Cancel
+            </button>
+            <button
+              onClick={() => { onSave(localList); onClose(); }}
+              className="flex items-center space-x-1.5 px-4 py-2 text-xs font-mono text-white bg-blue-600 hover:bg-blue-500 rounded-xl cursor-pointer transition-all shadow-lg shadow-blue-500/20"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Apply Changes</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WatchlistPage() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
@@ -294,6 +412,7 @@ export default function WatchlistPage() {
   const [online, setOnline] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [addingTicker, setAddingTicker] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const indexPollRef = useRef<NodeJS.Timeout | null>(null);
@@ -446,6 +565,15 @@ export default function WatchlistPage() {
   }, [watchlist, fetchBatchQuotes, fetchIndices]);
 
   // ── Sort ──────────────────────────────────────────────
+  // ── Save from edit panel ──────────────────────────────
+  const saveWatchlist = useCallback((newList: string[]) => {
+    setWatchlist(newList);
+    persistWatchlist(newList);
+    // Refresh quotes for any newly included symbols
+    const added = newList.filter(s => !watchlist.includes(s));
+    if (added.length > 0) fetchBatchQuotes(added);
+  }, [watchlist, fetchBatchQuotes, persistWatchlist]);
+
   const requestSort = (field: SortField) => {
     setSortDir(prev => sortField === field && prev === "asc" ? "desc" : "asc");
     setSortField(field);
@@ -590,6 +718,14 @@ export default function WatchlistPage() {
                 onSelect={addSymbol}
               />
             </div>
+
+            <button
+              onClick={() => setEditMode(true)}
+              className="flex items-center space-x-1.5 p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/30 text-gray-400 hover:text-amber-400 transition-all cursor-pointer"
+              title="Edit watchlist"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
 
             <button
               onClick={manualRefresh}
@@ -790,6 +926,15 @@ export default function WatchlistPage() {
           />
         )}
       </div>
+
+      {/* ── Edit Watchlist Modal ──────────────────────── */}
+      {editMode && (
+        <EditPanel
+          watchlist={watchlist}
+          onSave={saveWatchlist}
+          onClose={() => setEditMode(false)}
+        />
+      )}
     </div>
   );
 }

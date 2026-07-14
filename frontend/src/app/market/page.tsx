@@ -1,16 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import SectorHeatmap from "@/components/SectorHeatmap";
-import { 
-  Globe, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Globe,
+  TrendingUp,
+  TrendingDown,
   Info,
-  Calendar,
+  RefreshCw,
   Layers,
-  Cpu
+  Cpu,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart2,
+  Clock,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
+
+interface IndexQuote {
+  label: string;
+  symbol: string;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
+}
 
 interface SectorOutlook {
   sector: string;
@@ -23,113 +37,237 @@ interface MarketPulseData {
   pulse_summary: string;
   top_sectors: SectorOutlook[];
   market_drivers: string[];
-  macro_trends: string[];
+  macro_trends?: string[];
 }
+
+const API = "http://127.0.0.1:8000";
+
+const FALLBACK_PULSE: MarketPulseData = {
+  market_condition: "BULLISH",
+  pulse_summary:
+    "The Indian stock market exhibits strong bullish momentum, with NIFTY 50 and SENSEX hitting near-record highs led by IT services expansion and robust domestic credit growth in Financial Services.",
+  top_sectors: [
+    {
+      sector: "IT & Software Services",
+      performance: "Strong",
+      outlook:
+        "Strong pipeline in cloud and digital transformations driving major service exports.",
+    },
+    {
+      sector: "Financial Services",
+      performance: "Stable",
+      outlook:
+        "Robust credit growth and improving net interest margins supporting corporate banks.",
+    },
+    {
+      sector: "Energy & Power",
+      performance: "Strong",
+      outlook:
+        "Green energy capital expenditures driving infrastructure and utility valuations.",
+    },
+  ],
+  market_drivers: [
+    "Strong domestic institutional investor (DII) inflows supporting market valuations.",
+    "Optimistic GDP growth projections by the Reserve Bank of India.",
+    "Cooling inflation reports enabling repo rate easing sentiment.",
+  ],
+  macro_trends: [
+    "Increasing financialization of household savings in India.",
+    "Digital public infrastructure driving efficiency across banking and retail sectors.",
+  ],
+};
 
 export default function MarketOverviewPage() {
   const [pulse, setPulse] = useState<MarketPulseData | null>(null);
+  const [indices, setIndices] = useState<IndexQuote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [indicesLoading, setIndicesLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [syncTime, setSyncTime] = useState<string | null>(null);
+  const indexPollRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ── Fetch indices live ──────────────────────────────
+  const fetchIndices = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/indices`);
+      if (!res.ok) throw new Error("Indices fetch failed");
+      const data = await res.json();
+      setIndices(data.indices || []);
+      setOnline(true);
+      setLastUpdated(new Date());
+    } catch {
+      setOnline(false);
+    } finally {
+      setIndicesLoading(false);
+    }
+  }, []);
+
+  // ── Fetch AI market pulse ───────────────────────────
+  const fetchPulse = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/market/pulse`);
+      if (!res.ok) throw new Error("No cached pulse");
+      const data = await res.json();
+      setPulse(data.pulse_data || data);
+      setUsingMock(false);
+    } catch {
+      setPulse(FALLBACK_PULSE);
+      setUsingMock(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Manual refresh ──────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchIndices(), fetchPulse()]);
+    setRefreshing(false);
+  }, [fetchIndices, fetchPulse]);
 
   useEffect(() => {
     setMounted(true);
-    async function fetchMarketPulse() {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/market/pulse");
-        if (!res.ok) {
-          throw new Error("No cached pulse found in database");
-        }
-        const data = await res.json();
-        // Supabase stores it nested in 'pulse_data'
-        setPulse(data.pulse_data || data);
-        if (data.created_at) {
-          setSyncTime(data.created_at);
-        }
-        setUsingMock(false);
-      } catch (err: any) {
-        setError(err.message);
-        // Fallback mock data if server/DB is not active yet
-        setPulse({
-          market_condition: "BULLISH",
-          pulse_summary: "The Indian stock market exhibits strong bullish momentum, with NIFTY 50 and SENSEX hitting near-record highs led by IT services expansion and robust domestic credit growth in Financial Services.",
-          top_sectors: [
-            {
-              sector: "IT & Software Services",
-              performance: "Strong",
-              outlook: "Strong pipeline in cloud and digital transformations driving major service exports."
-            },
-            {
-              sector: "Financial Services",
-              performance: "Stable",
-              outlook: "Robust credit growth and improving net interest margins supporting corporate banks."
-            },
-            {
-              sector: "Energy & Power",
-              performance: "Strong",
-              outlook: "Green energy capital expenditures driving infrastructure and utility valuations."
-            }
-          ],
-          market_drivers: [
-            "Strong domestic institutional investor (DII) inflows supporting market valuations.",
-            "Optimistic GDP growth projections by the Reserve Bank of India.",
-            "Cooling inflation reports enabling repo rate easing sentiment."
-          ],
-          macro_trends: [
-            "Increasing financialization of household savings in India.",
-            "Digital public infrastructure driving efficiency across banking and retail sectors."
-          ]
-        });
-        setUsingMock(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchMarketPulse();
-  }, []);
+    fetchIndices();
+    fetchPulse();
+    // Auto-refresh indices every 30s
+    indexPollRef.current = setInterval(fetchIndices, 30000);
+    return () => {
+      if (indexPollRef.current) clearInterval(indexPollRef.current);
+    };
+  }, [fetchIndices, fetchPulse]);
+
+  // ── Market hours status ─────────────────────────────
+  const getMarketStatus = () => {
+    if (!mounted) return null;
+    const now = new Date();
+    const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const h = ist.getHours(), m = ist.getMinutes();
+    const mins = h * 60 + m;
+    const day = ist.getDay();
+    if (day === 0 || day === 6)
+      return { label: "Market Closed", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", dot: "bg-red-400" };
+    if (mins < 9 * 60 + 15)
+      return { label: "Pre-Open", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", dot: "bg-amber-400" };
+    if (mins <= 15 * 60 + 30)
+      return { label: "NSE Open", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", dot: "bg-emerald-400" };
+    return { label: "Market Closed", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", dot: "bg-red-400" };
+  };
+  const mktStatus = getMarketStatus();
 
   return (
-    <div className="p-8 space-y-8 flex-1">
-      {/* Page Header */}
+    <div className="p-6 space-y-6 flex-1">
+      {/* ── Page Header ─────────────────────────────── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Market Overview</h2>
-          <p className="text-sm text-gray-500 font-mono">GLOBAL EQUITY HEALTH & AI INSIGHTS</p>
+          <p className="text-sm text-gray-500 font-mono">INDIAN EQUITY HEALTH & LIVE MARKET DATA</p>
         </div>
-        <div className="flex items-center space-x-3 text-xs bg-[#0c1020]/80 border border-[rgba(255,255,255,0.06)] rounded-xl px-4 py-2 text-gray-400 font-mono">
-          <Calendar className="w-3.5 h-3.5 mr-1" />
-          <span>
-            Latest Sync: {mounted 
-              ? (syncTime 
-                ? new Date(syncTime).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) 
-                : new Date().toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })) 
-              : "Loading..."}
-          </span>
+
+        <div className="flex items-center gap-3">
+          {/* Market status pill */}
+          {mktStatus && (
+            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-mono font-semibold ${mktStatus.bg} ${mktStatus.color}`}>
+              <span className={`relative flex h-2 w-2`}>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${mktStatus.dot} opacity-75`} />
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${mktStatus.dot}`} />
+              </span>
+              <span>{mktStatus.label}</span>
+            </div>
+          )}
+
+          {/* Last updated */}
+          {lastUpdated && mounted && (
+            <div className="flex items-center space-x-1.5 text-[10px] font-mono text-gray-500">
+              <Clock className="w-3 h-3" />
+              <span>Updated {lastUpdated.toLocaleTimeString("en-IN")}</span>
+            </div>
+          )}
+
+          {/* Refresh button */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 hover:border-blue-500/40 text-blue-400 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
+          </button>
         </div>
       </div>
 
-      {/* Connection Notice if displaying Mock data */}
+      {/* ── Live Indices Bar ─────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {indicesLoading
+          ? [1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 bg-white/[0.03] border border-white/[0.05] rounded-2xl animate-pulse" />
+            ))
+          : indices.map((idx) => {
+              const up = (idx.change_pct ?? 0) >= 0;
+              return (
+                <div
+                  key={idx.symbol}
+                  className={`flex flex-col justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                    up
+                      ? "bg-emerald-500/5 border-emerald-500/15 hover:border-emerald-500/30"
+                      : "bg-rose-500/5 border-rose-500/15 hover:border-rose-500/30"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">{idx.label}</span>
+                    {up ? (
+                      <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-lg font-mono font-bold text-white">
+                      {idx.price ? idx.price.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "–"}
+                    </div>
+                    <div className={`text-xs font-mono font-semibold mt-0.5 ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                      {idx.change_pct !== null
+                        ? `${up ? "+" : ""}${idx.change_pct.toFixed(2)}%`
+                        : "–"}
+                      {idx.change !== null ? (
+                        <span className="text-gray-500 font-normal ml-1.5">
+                          ({up ? "+" : ""}
+                          {idx.change.toFixed(2)})
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+      </div>
+
+      {/* ── Offline / mock notice ────────────────────── */}
       {usingMock && (
         <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl p-4 flex items-start space-x-3 text-xs">
           <Info className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold">Displaying Offline Demo Data:</span> No cached AI Market Pulse was found in the database. Run the daily analysis cron job script (<code className="font-mono bg-black/40 px-1 py-0.5 rounded">python backend/app/cron/daily_analysis.py</code>) with tracked tickers in the database to generate a live Gemini report here.
+            <span className="font-semibold">AI Pulse: Offline Demo Mode.</span> No cached AI Market Pulse found in the database. Run{" "}
+            <code className="font-mono bg-black/40 px-1 py-0.5 rounded">
+              python backend/app/cron/daily_analysis.py
+            </code>{" "}
+            to generate a live Gemini report.
           </div>
         </div>
       )}
 
-      {/* Main Grid: Left Heatmap, Right Market Pulse */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Heatmap Area */}
+      {/* ── Main grid: Heatmap + Pulse ───────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Sector Heatmap */}
         <div className="lg:col-span-7 h-full">
           <SectorHeatmap />
         </div>
 
-        {/* AI Market Pulse Area */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="glass-panel p-6 space-y-6">
+        {/* AI Market Pulse panel */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="glass-panel p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 rounded-lg bg-blue-600/15 flex items-center justify-center">
@@ -140,15 +278,22 @@ export default function MarketOverviewPage() {
                   <p className="text-[10px] text-gray-500 font-mono">GEMINI GENERATIVE SYNTHESIS</p>
                 </div>
               </div>
-              
-              {/* Market Condition Badge */}
+
               {pulse && (
-                <div className={`flex items-center font-mono font-bold text-xs px-2.5 py-1 rounded-full border ${
-                  pulse.market_condition === "BULLISH" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                  pulse.market_condition === "BEARISH" ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
-                  "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                }`}>
-                  {pulse.market_condition === "BULLISH" ? <TrendingUp className="w-3.5 h-3.5 mr-1" /> : <TrendingDown className="w-3.5 h-3.5 mr-1" />}
+                <div
+                  className={`flex items-center font-mono font-bold text-xs px-2.5 py-1 rounded-full border ${
+                    pulse.market_condition === "BULLISH"
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      : pulse.market_condition === "BEARISH"
+                      ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                      : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                  }`}
+                >
+                  {pulse.market_condition === "BULLISH" ? (
+                    <TrendingUp className="w-3.5 h-3.5 mr-1" />
+                  ) : (
+                    <TrendingDown className="w-3.5 h-3.5 mr-1" />
+                  )}
                   {pulse.market_condition}
                 </div>
               )}
@@ -157,17 +302,13 @@ export default function MarketOverviewPage() {
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center space-y-3">
                 <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs text-gray-500 font-mono">Analyzing Portfolio Metrics...</span>
+                <span className="text-xs text-gray-500 font-mono">Analyzing Market Metrics...</span>
               </div>
             ) : pulse ? (
-              <div className="space-y-6">
-                {/* Summary narrative */}
-                <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                  {pulse.pulse_summary}
-                </p>
+              <div className="space-y-5">
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">{pulse.pulse_summary}</p>
 
-                {/* Top Sector Outlook */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center font-mono">
                     <Layers className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
                     Sector Outlook
@@ -177,11 +318,15 @@ export default function MarketOverviewPage() {
                       <div key={sec.sector} className="bg-black/20 rounded-xl p-3 border border-white/[0.02]">
                         <div className="flex justify-between items-center text-xs font-bold text-white mb-1">
                           <span>{sec.sector}</span>
-                          <span className={`text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded-md ${
-                            sec.performance === "Strong" ? "bg-emerald-500/10 text-emerald-400" :
-                            sec.performance === "Weak" ? "bg-rose-500/10 text-rose-400" :
-                            "bg-slate-500/10 text-slate-400"
-                          }`}>
+                          <span
+                            className={`text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded-md ${
+                              sec.performance === "Strong"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : sec.performance === "Weak"
+                                ? "bg-rose-500/10 text-rose-400"
+                                : "bg-slate-500/10 text-slate-400"
+                            }`}
+                          >
                             {sec.performance}
                           </span>
                         </div>
@@ -191,8 +336,7 @@ export default function MarketOverviewPage() {
                   </div>
                 </div>
 
-                {/* Core Market Drivers */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center font-mono">
                     <Cpu className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
                     Key Market Drivers
@@ -206,8 +350,46 @@ export default function MarketOverviewPage() {
                     ))}
                   </ul>
                 </div>
+
+                {pulse.macro_trends && pulse.macro_trends.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center font-mono">
+                      <BarChart2 className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
+                      Macro Trends
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {pulse.macro_trends.map((t, i) => (
+                        <li key={i} className="flex items-start text-xs text-slate-400 leading-relaxed">
+                          <span className="text-gray-600 font-mono mr-2">→</span>
+                          <span>{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : null}
+          </div>
+
+          {/* Live status card */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[10px] font-mono">
+            <div className="flex items-center space-x-2">
+              {online ? (
+                <>
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                  </span>
+                  <span className="text-emerald-500">Live · Auto-refresh 30s</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3 text-red-400" />
+                  <span className="text-red-400">Offline</span>
+                </>
+              )}
+            </div>
+            <span className="text-gray-600">Yahoo Finance API · NSE/BSE</span>
           </div>
         </div>
       </div>
