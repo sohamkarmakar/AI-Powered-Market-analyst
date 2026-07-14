@@ -418,6 +418,10 @@ SECTOR_INDEX_MAP = {
 _sectors_cache = None
 _sectors_cached_time = 0
 
+@app.get("/api/market/sectors/constituents")
+def get_sector_constituents() -> Dict[str, List[str]]:
+    return SECTOR_CONSTITUENTS
+
 @app.get("/api/market/sectors")
 def get_sector_heatmap() -> Dict[str, Any]:
     global _sectors_cache, _sectors_cached_time

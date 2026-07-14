@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useTheme } from "@/components/ThemeContext";
+import Link from "next/link";
 import {
   Globe,
   TrendingUp,
@@ -407,12 +408,13 @@ export default function MarketOverviewPage() {
           : indices.map((idx) => {
               const up = (idx.change_pct ?? 0) >= 0;
               return (
-                <div
+                <Link
                   key={idx.symbol}
-                  className={`flex flex-col justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                  href={`/ticker/${encodeURIComponent(idx.symbol)}`}
+                  className={`flex flex-col justify-between p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${
                     up
-                      ? "bg-positive-bg border-positive/10 hover:border-positive/25"
-                      : "bg-negative-bg border-negative/10 hover:border-negative/25"
+                      ? "bg-positive-bg border-positive/10 hover:border-positive/25 hover:shadow-lg hover:shadow-positive/10"
+                      : "bg-negative-bg border-negative/10 hover:border-negative/25 hover:shadow-lg hover:shadow-negative/10"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -428,10 +430,10 @@ export default function MarketOverviewPage() {
                       {idx.price ? idx.price.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "–"}
                     </div>
                     <div className={`text-xs font-mono font-semibold mt-0.5 ${up ? "text-positive" : "text-negative"}`}>
-                      {idx.change_pct !== null
+                      {idx.change_pct != null
                         ? `${up ? "+" : ""}${idx.change_pct.toFixed(2)}%`
                         : "–"}
-                      {idx.change !== null ? (
+                      {idx.change != null ? (
                         <span className="text-text-muted font-normal ml-1.5 opacity-80">
                           ({up ? "+" : ""}
                           {idx.change.toFixed(2)})
@@ -439,7 +441,7 @@ export default function MarketOverviewPage() {
                       ) : null}
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
       </div>

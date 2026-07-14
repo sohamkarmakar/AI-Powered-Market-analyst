@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowUpRight, ArrowDownRight, Compass } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface SectorData {
   name: string;
@@ -32,6 +33,7 @@ function getSparklinePoints(prices: number[] | undefined, width: number = 120, h
 export default function SectorHeatmap() {
   const [sectors, setSectors] = useState<SectorData[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchSectors = useCallback(async () => {
     try {
@@ -76,7 +78,8 @@ export default function SectorHeatmap() {
             return (
               <div
                 key={sector.name}
-                className="glass-panel p-4 relative group flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] cursor-pointer hover:border-white/10"
+                onClick={() => router.push(`/screener?sector=${encodeURIComponent(sector.name)}`)}
+                className="glass-panel p-4 relative group flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] cursor-pointer hover:border-white/10 hover:shadow-xl hover:shadow-blue-500/10"
                 style={{
                   background: isPositive
                     ? `rgba(var(--positive-rgb, 34, 197, 94), ${bgIntensity / 350})`

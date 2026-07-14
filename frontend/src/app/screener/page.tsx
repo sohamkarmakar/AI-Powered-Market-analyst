@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Plus, X, Search, ArrowUpRight, ArrowDownRight,
   TrendingUp, TrendingDown, BarChart2, Activity,
@@ -417,6 +418,9 @@ export default function WatchlistPage() {
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const indexPollRef = useRef<NodeJS.Timeout | null>(null);
   const prevPricesRef = useRef<Record<string, number>>({});
+  const searchParams = useSearchParams();
+
+
 
   // ── localStorage helpers ──────────────────────────────
   const persistWatchlist = useCallback((list: string[]) => {
@@ -510,7 +514,25 @@ export default function WatchlistPage() {
     setWatchlist(list);
     fetchBatchQuotes(list, true);
     fetchIndices();
-  }, []);
+  }, [loadWatchlist, fetchBatchQuotes, fetchIndices]);
+
+  // ── Auto-filter from URL & Load Constituents ──────────
+  useEffect(() => {
+    const sector = searchParams.get("sector");
+    if (sector) {
+      // DO NOT setSectorFilter(sector) because it mismatches Yahoo Finance strings (e.g. "Technology" vs "IT & Software")
+      fetch(`${API}/api/market/sectors/constituents`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data[sector]) {
+            const symbols = data[sector].map((s: string) => normBase(s));
+            setWatchlist(symbols);
+            fetchBatchQuotes(symbols);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [searchParams, fetchBatchQuotes]);
 
   // ── Start polling once initial load done ──────────────
   useEffect(() => {
@@ -687,7 +709,7 @@ export default function WatchlistPage() {
           {/* ── Toolbar ─────────────────────────────────── */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border-primary shrink-0 bg-bg-primary/80 backdrop-blur-sm">
             <div>
-              <h2 className="text-base font-bold text-text-primary tracking-tight">Watchlist</h2>
+              <h2 className="text-base font-bold text-text-primary tracking-tight">{searchParams.get("sector") || "Watchlist"}</h2>
               <p className="text-[10px] font-mono text-text-muted">{watchlist.length} STOCKS · LIVE NSE DATA</p>
             </div>
 
