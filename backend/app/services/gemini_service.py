@@ -49,8 +49,8 @@ class GeminiService:
             try:
                 genai.configure(api_key=api_key)
                 self.is_configured = True
-                # Using gemini-2.5-flash as the default model
-                self.model_name = "gemini-2.5-flash"
+                # Using gemini-3.5-flash as the default model
+                self.model_name = "gemini-3.5-flash"
                 logger.info(f"Gemini service initialized using model {self.model_name}.")
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini: {str(e)}")
@@ -182,6 +182,77 @@ class GeminiService:
         - Outlook and performance trends for key sectors present in the data.
         - Top market drivers (macro or portfolio-specific factors).
         - Notable macro-economic trends to watch.
+        """
+        return self._call_gemini(prompt, MarketPulseSchema)
+
+    def generate_rich_market_pulse(
+        self,
+        indices_data: List[Dict[str, Any]],
+        sector_data: List[Dict[str, Any]],
+        gainers: List[Dict[str, Any]],
+        losers: List[Dict[str, Any]],
+        active: List[Dict[str, Any]],
+        vix_level: Optional[float]
+    ) -> Dict[str, Any]:
+        """
+        Generate a global market pulse report based on rich live data including indices, sectors, VIX, gainers and losers.
+        """
+        if not indices_data and not sector_data:
+            return self._generate_mock_data(MarketPulseSchema)
+
+        indices_str = "\n".join([
+            f"- {idx['label']} ({idx['symbol']}): Price: {idx.get('price')}, Change: {idx.get('change')} ({idx.get('change_pct')}%)"
+            for idx in indices_data if 'label' in idx
+        ])
+        
+        sectors_str = "\n".join([
+            f"- {sec['name']}: Change: {sec['change']:.2f}%, Sentiment: {sec['sentiment']} (from {sec['count']} constituents)"
+            for sec in sector_data
+        ])
+
+        gainers_str = ", ".join([
+            f"{g['symbol']} (+{g['change_pct']:.2f}%)" for g in gainers
+        ]) if gainers else "N/A"
+
+        losers_str = ", ".join([
+            f"{l['symbol']} ({l['change_pct']:.2f}%)" for l in losers
+        ]) if losers else "N/A"
+
+        active_str = ", ".join([
+            f"{a['symbol']} (Vol: {a['volume']:,})" for a in active
+        ]) if active else "N/A"
+
+        prompt = f"""
+        You are a senior market analyst generating a concise daily briefing for Indian equities.
+        Given the following live market data, generate a structured JSON market pulse analysis report.
+        
+        [Major Indian Indices]
+        {indices_str}
+        
+        [India VIX (Fear Gauge)]
+        VIX Level: {vix_level or "N/A"}
+        
+        [Sector Performance Heatmap (Constituent-aggregated momentum)]
+        {sectors_str}
+        
+        [Top Market Gainers]
+        {gainers_str}
+        
+        [Top Market Losers]
+        {losers_str}
+        
+        [Most Active Stocks by Volume]
+        {active_str}
+        
+        Output MUST be a valid JSON matching this schema:
+        - market_condition: Overall market tone ("BULLISH" | "BEARISH" | "SIDEWAYS").
+        - pulse_summary: 2-3 sentence overview of market tone and core drivers.
+        - top_sectors: A list of 3 sectors of interest with outlook. Each item must have:
+            - sector: Sector name.
+            - performance: "Strong" | "Stable" | "Weak" (short-term performance summary matching the sector's move).
+            - outlook: Brief forward-looking narrative notes on the sector.
+        - market_drivers: 3 bullet reasons for today's price movements (e.g., sector rotation, VIX levels, global cue flow).
+        - macro_trends: 2-3 broader structural observations about the Indian economy or corporate sectors.
         """
         return self._call_gemini(prompt, MarketPulseSchema)
 

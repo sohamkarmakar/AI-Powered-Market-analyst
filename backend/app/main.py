@@ -273,7 +273,7 @@ def get_intraday(symbol: str, period: str = "5d") -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────
-# INDICES — NIFTY 50, SENSEX, BANK NIFTY strip
+# INDICES — NIFTY 50, SENSEX, BANK NIFTY, INDIA VIX strip
 # ─────────────────────────────────────────────
 
 @app.get("/api/indices")
@@ -289,6 +289,7 @@ def get_indices() -> Dict[str, Any]:
         "SENSEX":     "^BSESN",
         "BANK NIFTY": "^NSEBANK",
         "NIFTY IT":   "^CNXIT",
+        "INDIA VIX":  "^INDIAVIX",
     }
 
     def fetch_index(label: str, sym: str) -> Dict[str, Any]:
@@ -310,7 +311,7 @@ def get_indices() -> Dict[str, Any]:
             return {"label": label, "symbol": sym, "error": str(ex)}
 
     results = []
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = {executor.submit(fetch_index, lbl, sym): lbl for lbl, sym in index_map.items()}
         done = {}
         for future in as_completed(futures):
@@ -321,6 +322,306 @@ def get_indices() -> Dict[str, Any]:
         results.append(done.get(lbl, {"label": lbl, "symbol": index_map[lbl]}))
 
     return {"indices": results}
+
+
+# ─────────────────────────────────────────────
+# GLOBAL TICKER TAPE
+# ─────────────────────────────────────────────
+_ticker_tape_cache = None
+_ticker_tape_cached_time = 0
+
+@app.get("/api/market/ticker-tape")
+def get_ticker_tape() -> Dict[str, Any]:
+    """
+    Returns live quotes for global indices, currencies, and commodities for the ticker tape.
+    """
+    global _ticker_tape_cache, _ticker_tape_cached_time
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import yfinance as yf
+
+    now = time.time()
+    if _ticker_tape_cache and (now - _ticker_tape_cached_time < 30):
+        return _ticker_tape_cache
+
+    tape_map = {
+        "DOW 30": "^DJI",
+        "NASDAQ": "^IXIC",
+        "NIKKEI 225": "^N225",
+        "HANG SENG": "^HSI",
+        "USD/INR": "INR=X",
+        "BRENT CRUDE": "BZ=F",
+        "GOLD": "GC=F"
+    }
+
+    def fetch_item(label: str, sym: str) -> Dict[str, Any]:
+        try:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            price = getattr(fi, "last_price", None)
+            prev  = getattr(fi, "previous_close", None)
+            change = round(price - prev, 2) if price and prev else None
+            change_pct = round((change / prev) * 100, 2) if change and prev else None
+            return {
+                "label": label,
+                "symbol": sym,
+                "price": round(float(price), 2) if price else None,
+                "change": change,
+                "change_pct": change_pct,
+            }
+        except Exception as ex:
+            return {"label": label, "symbol": sym, "error": str(ex)}
+
+    results = []
+    with ThreadPoolExecutor(max_workers=len(tape_map)) as executor:
+        futures = {executor.submit(fetch_item, lbl, sym): lbl for lbl, sym in tape_map.items()}
+        done = {}
+        for future in as_completed(futures):
+            res = future.result()
+            done[res["label"]] = res
+            
+    for lbl in tape_map:
+        results.append(done.get(lbl, {"label": lbl, "symbol": tape_map[lbl]}))
+
+    _ticker_tape_cache = {"tape": results}
+    _ticker_tape_cached_time = now
+    return _ticker_tape_cache
+
+
+# ─────────────────────────────────────────────
+# SECTOR HEATMAP CONSTITUENT AGGREGATION
+# ─────────────────────────────────────────────
+SECTOR_CONSTITUENTS = {
+    "IT & Software": ["TCS.NS","INFY.NS","WIPRO.NS","HCLTECH.NS","LTIM.NS","TECHM.NS"],
+    "Financial Services": ["HDFCBANK.NS","ICICIBANK.NS","SBIN.NS","AXISBANK.NS","KOTAKBANK.NS","INDUSINDBK.NS"],
+    "Healthcare & Pharma": ["SUNPHARMA.NS","DRREDDY.NS","CIPLA.NS","DIVISLAB.NS","APOLLOHOSP.NS"],
+    "Automobile": ["MARUTI.NS","TATAMOTORS.NS","M&M.NS","BAJAJ-AUTO.NS","HEROMOTOCO.NS"],
+    "FMCG": ["HINDUNILVR.NS","ITC.NS","NESTLEIND.NS","DABUR.NS","MARICO.NS"],
+    "Energy & Power": ["RELIANCE.NS","ONGC.NS","BPCL.NS","IOC.NS","COALINDIA.NS"],
+    "Metals & Mining": ["TATASTEEL.NS","JSWSTEEL.NS","HINDALCO.NS","VEDL.NS","SAIL.NS"],
+    "Infrastructure": ["LT.NS", "ADANIPORTS.NS", "ULTRACEMCO.NS", "NTPC.NS", "POWERGRID.NS"],
+    "Real Estate": ["DLF.NS","GODREJPROP.NS","PRESTIGE.NS","OBEROIRLTY.NS"]
+}
+
+SECTOR_INDEX_MAP = {
+    "IT & Software": "^CNXIT",
+    "Financial Services": "^CNXFIN",
+    "Healthcare & Pharma": "^CNXPHARMA",
+    "Automobile": "^CNXAUTO",
+    "FMCG": "^CNXFMCG",
+    "Energy & Power": "^CNXENERGY",
+    "Metals & Mining": "^CNXMETAL",
+    "Infrastructure": "^CNXINFRA",
+    "Real Estate": "^CNXREALTY"
+}
+
+_sectors_cache = None
+_sectors_cached_time = 0
+
+@app.get("/api/market/sectors")
+def get_sector_heatmap() -> Dict[str, Any]:
+    global _sectors_cache, _sectors_cached_time
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import yfinance as yf
+
+    now = time.time()
+    if _sectors_cache and (now - _sectors_cached_time < 30):
+        return _sectors_cache
+
+    # 1. Fetch all stock quotes to aggregate sector changes
+    all_stocks = set()
+    for constituents in SECTOR_CONSTITUENTS.values():
+        all_stocks.update(constituents)
+    all_stocks = list(all_stocks)
+
+    stock_quotes = {}
+    def fetch_stock_quote(sym: str):
+        try:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            price = getattr(fi, "last_price", None)
+            prev = getattr(fi, "previous_close", None)
+            vol = getattr(fi, "last_volume", None)
+            
+            change_pct = 0.0
+            if price and prev and prev != 0:
+                change_pct = ((price - prev) / prev) * 100
+            return sym, {"price": price, "prev_close": prev, "change_pct": change_pct, "volume": vol}
+        except Exception:
+            return sym, {"price": None, "prev_close": None, "change_pct": 0.0, "volume": 0}
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = [executor.submit(fetch_stock_quote, sym) for sym in all_stocks]
+        for f in as_completed(futures):
+            sym, quote = f.result()
+            stock_quotes[sym] = quote
+
+    # 2. Fetch intraday history (sparklines) for the 9 sector indices
+    sector_sparklines = {}
+    def fetch_sparkline(sector_name: str, index_sym: str):
+        try:
+            t = yf.Ticker(index_sym)
+            df = t.history(period="1d", interval="5m")
+            if df.empty:
+                df = t.history(period="5d", interval="15m")
+            if not df.empty:
+                prices = [round(float(p), 2) for p in df["Close"].dropna().tolist()]
+                return sector_name, prices
+            return sector_name, []
+        except Exception:
+            return sector_name, []
+
+    with ThreadPoolExecutor(max_workers=9) as executor:
+        futures = [executor.submit(fetch_sparkline, name, sym) for name, sym in SECTOR_INDEX_MAP.items()]
+        for f in as_completed(futures):
+            name, prices = f.result()
+            sector_sparklines[name] = prices
+
+    # 3. Aggregate sector metrics
+    sectors_result = []
+    for sector_name, constituents in SECTOR_CONSTITUENTS.items():
+        changes = []
+        for s in constituents:
+            q = stock_quotes.get(s)
+            if q and q["price"] is not None:
+                changes.append(q["change_pct"])
+        
+        avg_change = sum(changes) / len(changes) if changes else 0.0
+        
+        if avg_change > 0.5:
+            sentiment = "BULLISH"
+        elif avg_change < -0.5:
+            sentiment = "BEARISH"
+        else:
+            sentiment = "NEUTRAL"
+
+        sectors_result.append({
+            "name": sector_name,
+            "change": round(avg_change, 2),
+            "sentiment": sentiment,
+            "count": len(constituents),
+            "sparkline": sector_sparklines.get(sector_name, [])
+        })
+
+    _sectors_cache = {"sectors": sectors_result}
+    _sectors_cached_time = now
+    return _sectors_cache
+
+
+# ─────────────────────────────────────────────
+# TOP GAINERS / LOSERS / ACTIVE
+# ─────────────────────────────────────────────
+_gainers_losers_cache = None
+_gainers_losers_cached_time = 0
+
+@app.get("/api/market/gainers-losers")
+def get_gainers_losers() -> Dict[str, Any]:
+    global _gainers_losers_cache, _gainers_losers_cached_time
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import yfinance as yf
+
+    now = time.time()
+    if _gainers_losers_cache and (now - _gainers_losers_cached_time < 300): # 5 min cache
+        return _gainers_losers_cache
+
+    all_stocks = set()
+    for constituents in SECTOR_CONSTITUENTS.values():
+        all_stocks.update(constituents)
+    all_stocks = list(all_stocks)
+
+    stocks_data = []
+    def fetch_stock_full(sym: str):
+        try:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            name = sym.replace(".NS", "")
+            price = getattr(fi, "last_price", None)
+            prev = getattr(fi, "previous_close", None)
+            volume = getattr(fi, "last_volume", None)
+            
+            change = 0.0
+            change_pct = 0.0
+            if price and prev:
+                change = price - prev
+                if prev != 0:
+                    change_pct = (change / prev) * 100
+            return {
+                "symbol": sym.replace(".NS", ""),
+                "name": name,
+                "price": round(float(price), 2) if price else None,
+                "change": round(float(change), 2) if change else 0.0,
+                "change_pct": round(float(change_pct), 2) if change_pct else 0.0,
+                "volume": int(volume) if volume else 0
+            }
+        except Exception:
+            return None
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = [executor.submit(fetch_stock_full, sym) for sym in all_stocks]
+        for f in as_completed(futures):
+            res = f.result()
+            if res and res["price"] is not None:
+                stocks_data.append(res)
+
+    gainers = sorted([s for s in stocks_data if s["change_pct"] > 0], key=lambda x: x["change_pct"], reverse=True)[:5]
+    losers = sorted([s for s in stocks_data if s["change_pct"] < 0], key=lambda x: x["change_pct"])[:5]
+    active = sorted(stocks_data, key=lambda x: x["volume"], reverse=True)[:5]
+
+    _gainers_losers_cache = {
+        "gainers": gainers,
+        "losers": losers,
+        "active": active
+    }
+    _gainers_losers_cached_time = now
+    return _gainers_losers_cache
+
+
+# ─────────────────────────────────────────────
+# MANUAL AI PULSE REGENERATION
+# ─────────────────────────────────────────────
+@app.post("/api/market/pulse/generate")
+def generate_market_pulse_endpoint() -> Dict[str, Any]:
+    if not supabase_service.is_configured:
+        raise HTTPException(status_code=503, detail="Supabase not configured.")
+    try:
+        # 1. Fetch indices
+        indices_res = get_indices()
+        indices_data = indices_res.get("indices", [])
+        
+        # Get VIX
+        vix_val = None
+        for idx in indices_data:
+            if idx["symbol"] == "^INDIAVIX":
+                vix_val = idx["price"]
+
+        # 2. Fetch sectors heatmap
+        sectors_res = get_sector_heatmap()
+        sectors_data = sectors_res.get("sectors", [])
+
+        # 3. Fetch gainers and losers
+        gl_res = get_gainers_losers()
+        gainers = gl_res.get("gainers", [])
+        losers = gl_res.get("losers", [])
+        active = gl_res.get("active", [])
+
+        # 4. Invoke Gemini
+        market_pulse = gemini_service.generate_rich_market_pulse(
+            indices_data=indices_data,
+            sector_data=sectors_data,
+            gainers=gainers,
+            losers=losers,
+            active=active,
+            vix_level=vix_val
+        )
+
+        # 5. Save to Supabase
+        supabase_service.insert_market_pulse(market_pulse)
+        
+        return {"status": "success", "pulse_data": market_pulse}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ─────────────────────────────────────────────

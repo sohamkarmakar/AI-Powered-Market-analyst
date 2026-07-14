@@ -80,15 +80,58 @@ def run_daily_analysis():
                 # Continue with the next ticker so that one failure doesn't halt the whole job
                 continue
 
-        # 3. Generate global market pulse analysis using all ticker metrics
-        if ticker_data_for_pulse:
-            logger.info("Generating global market pulse report...")
-            try:
-                market_pulse = gemini_service.generate_market_pulse(ticker_data_for_pulse)
-                supabase_service.insert_market_pulse(market_pulse)
-                logger.info("Successfully generated and cached market pulse report.")
-            except Exception as e:
-                logger.error(f"Failed to generate market pulse: {str(e)}")
+        # 3. Generate global market pulse analysis using rich metrics
+        logger.info("Generating global market pulse report...")
+        try:
+            import yfinance as yf
+            from app.main import get_sector_heatmap, get_gainers_losers
+
+            # Fetch Indices
+            indices_data = []
+            index_map = {
+                "NIFTY 50": "^NSEI",
+                "SENSEX": "^BSESN",
+                "BANK NIFTY": "^NSEBANK",
+                "NIFTY IT": "^CNXIT",
+                "INDIA VIX": "^INDIAVIX",
+            }
+            vix_val = None
+            for lbl, sym in index_map.items():
+                try:
+                    t = yf.Ticker(sym)
+                    fi = t.fast_info
+                    p = getattr(fi, "last_price", None)
+                    prev = getattr(fi, "previous_close", None)
+                    chg = round(p - prev, 2) if p and prev else 0.0
+                    chg_pct = round((chg / prev) * 100, 2) if prev else 0.0
+                    indices_data.append({
+                        "label": lbl, "symbol": sym, "price": p, "change": chg, "change_pct": chg_pct
+                    })
+                    if sym == "^INDIAVIX":
+                        vix_val = p
+                except Exception:
+                    pass
+
+            sectors_res = get_sector_heatmap()
+            sectors_data = sectors_res.get("sectors", [])
+
+            gl_res = get_gainers_losers()
+            gainers = gl_res.get("gainers", [])
+            losers = gl_res.get("losers", [])
+            active = gl_res.get("active", [])
+
+            market_pulse = gemini_service.generate_rich_market_pulse(
+                indices_data=indices_data,
+                sector_data=sectors_data,
+                gainers=gainers,
+                losers=losers,
+                active=active,
+                vix_level=vix_val
+            )
+            supabase_service.insert_market_pulse(market_pulse)
+            logger.info("Successfully generated and cached market pulse report.")
+        except Exception as e:
+            logger.error(f"Failed to generate market pulse: {str(e)}")
         else:
             logger.warning("No ticker data was successfully processed; skipping market pulse.")
 

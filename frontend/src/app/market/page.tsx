@@ -77,11 +77,84 @@ const FALLBACK_PULSE: MarketPulseData = {
   ],
 };
 
+const StockTable = ({ title, data, type }: { title: string; data: any[]; type: "gainers" | "losers" | "active" }) => {
+  return (
+    <div className="glass-panel p-5 space-y-4 flex flex-col justify-between h-full">
+      <div>
+        <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-3 mb-2">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{title}</h3>
+          <span className="text-[10px] text-gray-500 font-mono">NSE LIVE</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead>
+              <tr className="text-gray-500 border-b border-white/[0.04] pb-2">
+                <th className="pb-2 font-normal">Symbol</th>
+                <th className="pb-2 text-right font-normal">Price</th>
+                <th className="pb-2 text-right font-normal">{type === "active" ? "Volume" : "Change"}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.02]">
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-gray-500 font-sans">Fetching live data...</td>
+                </tr>
+              ) : (
+                data.map((stock) => {
+                  const isGain = stock.change_pct >= 0;
+                  return (
+                    <tr key={stock.symbol} className="hover:bg-white/[0.02] transition-colors duration-150">
+                      <td className="py-2.5">
+                        <a
+                          href={`/ticker/${stock.symbol}`}
+                          className="text-blue-400 hover:text-blue-300 font-bold transition-colors"
+                        >
+                          {stock.symbol}
+                        </a>
+                        <span className="block text-[9px] text-gray-500 truncate max-w-[120px]">{stock.name}</span>
+                      </td>
+                      <td className="py-2.5 text-right font-semibold text-white">
+                        ₹{stock.price ? stock.price.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "–"}
+                      </td>
+                      <td className={`py-2.5 text-right font-bold ${
+                        type === "active" ? "text-gray-300" : isGain ? "text-emerald-400" : "text-rose-400"
+                      }`}>
+                        {type === "active" ? (
+                          <span>{(stock.volume / 1000000).toFixed(2)}M</span>
+                        ) : (
+                          <span className="inline-flex items-center">
+                            {isGain ? "+" : ""}{stock.change_pct.toFixed(2)}%
+                            {isGain ? (
+                              <ArrowUpRight className="w-3 h-3 ml-0.5 text-emerald-400" />
+                            ) : (
+                              <ArrowDownRight className="w-3 h-3 ml-0.5 text-rose-400" />
+                            )}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function MarketOverviewPage() {
   const [pulse, setPulse] = useState<MarketPulseData | null>(null);
+  const [pulseCreatedAt, setPulseCreatedAt] = useState<Date | null>(null);
   const [indices, setIndices] = useState<IndexQuote[]>([]);
+  const [tapeData, setTapeData] = useState<any[]>([]);
+  const [gainers, setGainers] = useState<any[]>([]);
+  const [losers, setLosers] = useState<any[]>([]);
+  const [active, setActive] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [regeneratingPulse, setRegeneratingPulse] = useState(false);
   const [indicesLoading, setIndicesLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
   const [online, setOnline] = useState(true);
@@ -105,13 +178,48 @@ export default function MarketOverviewPage() {
     }
   }, []);
 
+  // ── Fetch global ticker tape ────────────────────────
+  const fetchTickerTape = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/market/ticker-tape`);
+      if (res.ok) {
+        const data = await res.json();
+        setTapeData(data.tape || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch ticker tape:", e);
+    }
+  }, []);
+
+  // ── Fetch top gainers/losers/active ─────────────────
+  const fetchGainersLosers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/market/gainers-losers`);
+      if (res.ok) {
+        const data = await res.json();
+        setGainers(data.gainers || []);
+        setLosers(data.losers || []);
+        setActive(data.active || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch gainers/losers:", e);
+    }
+  }, []);
+
   // ── Fetch AI market pulse ───────────────────────────
   const fetchPulse = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/market/pulse`);
       if (!res.ok) throw new Error("No cached pulse");
       const data = await res.json();
-      setPulse(data.pulse_data || data);
+      if (data.pulse_data) {
+        setPulse(data.pulse_data);
+        if (data.created_at) {
+          setPulseCreatedAt(new Date(data.created_at));
+        }
+      } else {
+        setPulse(data);
+      }
       setUsingMock(false);
     } catch {
       setPulse(FALLBACK_PULSE);
@@ -121,23 +229,50 @@ export default function MarketOverviewPage() {
     }
   }, []);
 
+  // ── Manual AI Briefing regeneration ────────────────
+  const handleRegeneratePulse = async () => {
+    setRegeneratingPulse(true);
+    try {
+      const res = await fetch(`${API}/api/market/pulse/generate`, {
+        method: "POST"
+      });
+      if (!res.ok) throw new Error("Regeneration failed");
+      const data = await res.json();
+      if (data.pulse_data) {
+        setPulse(data.pulse_data);
+        setPulseCreatedAt(new Date());
+        setUsingMock(false);
+      }
+    } catch (err) {
+      console.error("Failed to regenerate AI Briefing:", err);
+    } finally {
+      setRegeneratingPulse(false);
+    }
+  };
+
   // ── Manual refresh ──────────────────────────────────
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchIndices(), fetchPulse()]);
+    await Promise.all([fetchIndices(), fetchPulse(), fetchTickerTape(), fetchGainersLosers()]);
     setRefreshing(false);
-  }, [fetchIndices, fetchPulse]);
+  }, [fetchIndices, fetchPulse, fetchTickerTape, fetchGainersLosers]);
 
   useEffect(() => {
     setMounted(true);
     fetchIndices();
     fetchPulse();
-    // Auto-refresh indices every 30s
-    indexPollRef.current = setInterval(fetchIndices, 30000);
+    fetchTickerTape();
+    fetchGainersLosers();
+    // Auto-refresh live data every 10s
+    indexPollRef.current = setInterval(() => {
+      fetchIndices();
+      fetchTickerTape();
+      fetchGainersLosers();
+    }, 10000);
     return () => {
       if (indexPollRef.current) clearInterval(indexPollRef.current);
     };
-  }, [fetchIndices, fetchPulse]);
+  }, [fetchIndices, fetchPulse, fetchTickerTape, fetchGainersLosers]);
 
   // ── Market hours status ─────────────────────────────
   const getMarketStatus = () => {
@@ -159,6 +294,62 @@ export default function MarketOverviewPage() {
 
   return (
     <div className="p-6 space-y-6 flex-1">
+      {/* ── Global Ticker Tape ────────────────────────── */}
+      {tapeData && tapeData.length > 0 && (
+        <div className="w-full bg-[#0a0d1a]/80 border border-white/[0.04] rounded-2xl overflow-hidden py-2.5 px-4 relative flex items-center shadow-lg backdrop-blur-md">
+          <style>{`
+            @keyframes marquee {
+              0% { transform: translateX(0%); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee {
+              display: inline-flex;
+              white-space: nowrap;
+              animation: marquee 25s linear infinite;
+            }
+            .animate-marquee:hover {
+              animation-play-state: paused;
+            }
+          `}</style>
+          <div className="flex w-full overflow-hidden">
+            <div className="animate-marquee gap-8 pr-8 flex">
+              {tapeData.map((item, idx) => {
+                const up = (item.change_pct ?? 0) >= 0;
+                return (
+                  <div key={idx} className="inline-flex items-center space-x-2 text-xs font-mono select-none">
+                    <span className="text-gray-400 font-semibold uppercase">{item.label}</span>
+                    <span className="text-white font-bold">
+                      {item.label.includes("USD") ? `₹${item.price?.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price?.toFixed(2)}` : item.price?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </span>
+                    <span className={`inline-flex items-center font-bold ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                      {up ? "+" : ""}{item.change_pct?.toFixed(2)}%
+                      {up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="animate-marquee gap-8 pr-8 flex" aria-hidden="true">
+              {tapeData.map((item, idx) => {
+                const up = (item.change_pct ?? 0) >= 0;
+                return (
+                  <div key={`dup-${idx}`} className="inline-flex items-center space-x-2 text-xs font-mono select-none">
+                    <span className="text-gray-400 font-semibold uppercase">{item.label}</span>
+                    <span className="text-white font-bold">
+                      {item.label.includes("USD") ? `₹${item.price?.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price?.toFixed(2)}` : item.price?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </span>
+                    <span className={`inline-flex items-center font-bold ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                      {up ? "+" : ""}{item.change_pct?.toFixed(2)}%
+                      {up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Page Header ─────────────────────────────── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -199,9 +390,9 @@ export default function MarketOverviewPage() {
       </div>
 
       {/* ── Live Indices Bar ─────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {indicesLoading
-          ? [1, 2, 3, 4].map((i) => (
+          ? [1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-20 bg-white/[0.03] border border-white/[0.05] rounded-2xl animate-pulse" />
             ))
           : indices.map((idx) => {
@@ -275,28 +466,46 @@ export default function MarketOverviewPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Market Pulse</h3>
-                  <p className="text-[10px] text-gray-500 font-mono">GEMINI GENERATIVE SYNTHESIS</p>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-500 font-mono">GEMINI GENERATIVE SYNTHESIS</p>
+                    {pulseCreatedAt && (
+                      <span className="text-[8px] text-gray-600 font-mono">
+                        Synced {pulseCreatedAt.toLocaleTimeString("en-IN")}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {pulse && (
-                <div
-                  className={`flex items-center font-mono font-bold text-xs px-2.5 py-1 rounded-full border ${
-                    pulse.market_condition === "BULLISH"
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      : pulse.market_condition === "BEARISH"
-                      ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                      : "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                  }`}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleRegeneratePulse}
+                  disabled={regeneratingPulse}
+                  className="flex items-center space-x-1 px-2 py-1 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 text-blue-400 rounded-lg text-[9px] font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50"
                 >
-                  {pulse.market_condition === "BULLISH" ? (
-                    <TrendingUp className="w-3.5 h-3.5 mr-1" />
-                  ) : (
-                    <TrendingDown className="w-3.5 h-3.5 mr-1" />
-                  )}
-                  {pulse.market_condition}
-                </div>
-              )}
+                  <RefreshCw className={`w-2.5 h-2.5 ${regeneratingPulse ? "animate-spin" : ""}`} />
+                  <span>{regeneratingPulse ? "Analyzing..." : "Analyze Live"}</span>
+                </button>
+
+                {pulse && (
+                  <div
+                    className={`flex items-center font-mono font-bold text-[10px] px-2 py-1 rounded-full border ${
+                      pulse.market_condition === "BULLISH"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : pulse.market_condition === "BEARISH"
+                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                        : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                    }`}
+                  >
+                    {pulse.market_condition === "BULLISH" ? (
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3 mr-1" />
+                    )}
+                    {pulse.market_condition}
+                  </div>
+                )}
+              </div>
             </div>
 
             {loading ? (
@@ -380,7 +589,7 @@ export default function MarketOverviewPage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                   </span>
-                  <span className="text-emerald-500">Live · Auto-refresh 30s</span>
+                  <span className="text-emerald-500">Live · Auto-refresh 10s</span>
                 </>
               ) : (
                 <>
@@ -392,6 +601,13 @@ export default function MarketOverviewPage() {
             <span className="text-gray-600">Yahoo Finance API · NSE/BSE</span>
           </div>
         </div>
+      </div>
+
+      {/* ── Top Gainers / Losers / Active Section ─────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <StockTable title="Top Gainers" data={gainers} type="gainers" />
+        <StockTable title="Top Losers" data={losers} type="losers" />
+        <StockTable title="Most Active by Volume" data={active} type="active" />
       </div>
     </div>
   );
