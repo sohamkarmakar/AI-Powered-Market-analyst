@@ -447,5 +447,370 @@ def search_tickers(q: str = Query(...)) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FUNDAMENTALS — 30+ valuation, profitability, financial-health metrics
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/ticker/{symbol}/fundamentals")
+def get_fundamentals(symbol: str) -> Dict[str, Any]:
+    sym = normalize_symbol(symbol.upper())
+    try:
+        import yfinance as yf
+        t = yf.Ticker(sym)
+        fi = t.fast_info
+        info = t.info or {}
+
+        def _v(key: str):
+            v = info.get(key)
+            if v is None or (isinstance(v, float) and (v != v)):  # NaN check
+                return None
+            return v
+
+        return {
+            "symbol": sym,
+            "name": info.get("longName") or info.get("shortName") or sym,
+            "sector": _v("sector"), "industry": _v("industry"),
+            "country": _v("country"), "website": _v("website"),
+            "description": _v("longBusinessSummary"),
+            "employees": _v("fullTimeEmployees"),
+            # Valuation
+            "pe_ttm": _v("trailingPE"), "pe_forward": _v("forwardPE"),
+            "pb_ratio": _v("priceToBook"), "ps_ratio": _v("priceToSalesTrailing12Months"),
+            "peg_ratio": _v("pegRatio"), "ev_ebitda": _v("enterpriseToEbitda"),
+            "ev_revenue": _v("enterpriseToRevenue"), "enterprise_value": _v("enterpriseValue"),
+            # Per-share
+            "eps_ttm": _v("trailingEps"), "eps_forward": _v("forwardEps"),
+            "book_value": _v("bookValue"),
+            # Dividends
+            "dividend_yield": _v("dividendYield"), "dividend_rate": _v("dividendRate"),
+            "payout_ratio": _v("payoutRatio"), "five_year_avg_yield": _v("fiveYearAvgDividendYield"),
+            # Profitability
+            "roe": _v("returnOnEquity"), "roa": _v("returnOnAssets"),
+            "gross_margins": _v("grossMargins"), "operating_margins": _v("operatingMargins"),
+            "profit_margins": _v("profitMargins"), "ebitda_margins": _v("ebitdaMargins"),
+            # Financial health
+            "debt_to_equity": _v("debtToEquity"), "current_ratio": _v("currentRatio"),
+            "quick_ratio": _v("quickRatio"), "total_debt": _v("totalDebt"),
+            "total_cash": _v("totalCash"), "free_cashflow": _v("freeCashflow"),
+            "operating_cashflow": _v("operatingCashflow"),
+            # Revenue/Growth
+            "revenue": _v("totalRevenue"), "revenue_growth": _v("revenueGrowth"),
+            "earnings_growth": _v("earningsGrowth"), "ebitda": _v("ebitda"),
+            "gross_profit": _v("grossProfits"),
+            # Shares
+            "shares_outstanding": _v("sharesOutstanding"), "float_shares": _v("floatShares"),
+            "short_ratio": _v("shortRatio"),
+            # Price reference
+            "fifty_two_week_high": _v("fiftyTwoWeekHigh") or getattr(fi, "year_high", None),
+            "fifty_two_week_low":  _v("fiftyTwoWeekLow")  or getattr(fi, "year_low",  None),
+            "fifty_day_avg": _v("fiftyDayAverage"), "two_hundred_day_avg": _v("twoHundredDayAverage"),
+            "beta": _v("beta"),
+            "market_cap": _v("marketCap") or getattr(fi, "market_cap", None),
+            # Analyst
+            "target_high": _v("targetHighPrice"), "target_low": _v("targetLowPrice"),
+            "target_mean": _v("targetMeanPrice"), "target_median": _v("targetMedianPrice"),
+            "recommendation_key": _v("recommendationKey"),
+            "analyst_count": _v("numberOfAnalystOpinions"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EARNINGS / FINANCIALS — quarterly & annual financials + EPS history
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/ticker/{symbol}/earnings")
+def get_earnings(symbol: str) -> Dict[str, Any]:
+    sym = normalize_symbol(symbol.upper())
+    try:
+        import yfinance as yf
+        import pandas as pd
+        t = yf.Ticker(sym)
+
+        def _safe_float(val):
+            try:
+                f = float(val)
+                return None if (f != f) else f   # NaN → None
+            except Exception:
+                return None
+
+        # Quarterly financials
+        quarterly: List[Dict] = []
+        try:
+            qf = t.quarterly_financials
+            if qf is not None and not qf.empty:
+                for col in list(qf.columns)[:8]:
+                    period_str = col.strftime("%b %Y") if hasattr(col, "strftime") else str(col)
+                    def g(row):
+                        if row in qf.index:
+                            return _safe_float(qf.loc[row, col])
+                        return None
+                    quarterly.append({
+                        "period": period_str,
+                        "revenue": g("Total Revenue"),
+                        "net_income": g("Net Income"),
+                        "gross_profit": g("Gross Profit"),
+                        "ebitda": g("EBITDA"),
+                        "operating_income": g("Operating Income"),
+                    })
+        except Exception:
+            pass
+
+        # Annual financials
+        annual: List[Dict] = []
+        try:
+            af = t.financials
+            if af is not None and not af.empty:
+                for col in list(af.columns)[:5]:
+                    period_str = col.strftime("%Y") if hasattr(col, "strftime") else str(col)
+                    def ga(row):
+                        if row in af.index:
+                            return _safe_float(af.loc[row, col])
+                        return None
+                    annual.append({
+                        "period": period_str,
+                        "revenue": ga("Total Revenue"),
+                        "net_income": ga("Net Income"),
+                        "gross_profit": ga("Gross Profit"),
+                        "ebitda": ga("EBITDA"),
+                    })
+        except Exception:
+            pass
+
+        # EPS surprise history
+        eps_history: List[Dict] = []
+        try:
+            eh = t.earnings_history
+            if eh is not None and not eh.empty:
+                for _, row in eh.tail(8).iterrows():
+                    eps_history.append({
+                        "period": str(row.name)[:10] if hasattr(row, "name") else "",
+                        "eps_estimate": _safe_float(row.get("epsEstimate")),
+                        "eps_actual": _safe_float(row.get("epsActual")),
+                        "surprise_pct": _safe_float(row.get("epsDifference")),
+                    })
+        except Exception:
+            pass
+
+        # Next earnings date
+        next_earnings = None
+        try:
+            cal = t.calendar
+            if cal is not None:
+                raw = cal.get("Earnings Date") if isinstance(cal, dict) else None
+                if raw:
+                    vals = list(raw) if hasattr(raw, "__iter__") and not isinstance(raw, str) else [raw]
+                    next_earnings = str(vals[0])[:10] if vals else None
+        except Exception:
+            pass
+
+        return {
+            "symbol": sym, "quarterly": quarterly, "annual": annual,
+            "eps_history": eps_history, "next_earnings_date": next_earnings,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOLDERS — major + institutional shareholders
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/ticker/{symbol}/holders")
+def get_holders(symbol: str) -> Dict[str, Any]:
+    sym = normalize_symbol(symbol.upper())
+    try:
+        import yfinance as yf
+        import pandas as pd
+        t = yf.Ticker(sym)
+        info = t.info or {}
+
+        major: List[Dict] = []
+        try:
+            mh = t.major_holders
+            if mh is not None and not mh.empty:
+                for _, row in mh.iterrows():
+                    pct_raw = str(row.iloc[0]).replace("%", "").strip()
+                    try:
+                        pct = float(pct_raw)
+                    except Exception:
+                        pct = None
+                    major.append({"label": str(row.iloc[1]), "pct": pct})
+        except Exception:
+            pass
+
+        institutional: List[Dict] = []
+        try:
+            ih = t.institutional_holders
+            if ih is not None and not ih.empty:
+                for _, row in ih.head(15).iterrows():
+                    def _sf(k):
+                        v = row.get(k)
+                        try:
+                            f = float(v)
+                            return None if f != f else f
+                        except Exception:
+                            return None
+                    institutional.append({
+                        "holder": str(row.get("Holder", "N/A")),
+                        "shares": _sf("Shares"),
+                        "value": _sf("Value"),
+                        "pct_held": _sf("% Out"),
+                        "date": str(row.get("Date Reported", ""))[:10] if pd.notna(row.get("Date Reported")) else None,
+                    })
+        except Exception:
+            pass
+
+        return {
+            "symbol": sym, "major_holders": major, "institutional_holders": institutional,
+            "insider_pct": info.get("heldPercentInsiders"),
+            "institution_pct": info.get("heldPercentInstitutions"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RECOMMENDATIONS — analyst consensus + individual ratings
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/ticker/{symbol}/recommendations")
+def get_recommendations(symbol: str) -> Dict[str, Any]:
+    sym = normalize_symbol(symbol.upper())
+    try:
+        import yfinance as yf
+        t = yf.Ticker(sym)
+        info = t.info or {}
+
+        trend = {"strong_buy": 0, "buy": 0, "hold": 0, "sell": 0, "strong_sell": 0}
+        try:
+            rs = t.recommendations_summary
+            if rs is not None and not rs.empty:
+                row = rs.iloc[0]
+                trend = {
+                    "strong_buy":  int(row.get("strongBuy",  0) or 0),
+                    "buy":         int(row.get("buy",         0) or 0),
+                    "hold":        int(row.get("hold",        0) or 0),
+                    "sell":        int(row.get("sell",        0) or 0),
+                    "strong_sell": int(row.get("strongSell", 0) or 0),
+                }
+        except Exception:
+            pass
+
+        recent: List[Dict] = []
+        try:
+            recs = t.recommendations
+            if recs is not None and not recs.empty:
+                for _, row in recs.head(12).iterrows():
+                    recent.append({
+                        "firm": str(row.get("Firm", "N/A")),
+                        "to_grade": str(row.get("To Grade", "N/A")),
+                        "from_grade": str(row.get("From Grade", "")),
+                        "action": str(row.get("Action", "N/A")),
+                    })
+        except Exception:
+            pass
+
+        return {
+            "symbol": sym, "trend": trend, "recent": recent,
+            "target_high": info.get("targetHighPrice"),
+            "target_low":  info.get("targetLowPrice"),
+            "target_mean": info.get("targetMeanPrice"),
+            "target_median": info.get("targetMedianPrice"),
+            "recommendation_key": info.get("recommendationKey"),
+            "analyst_count": info.get("numberOfAnalystOpinions"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEWS — recent headlines directly from Yahoo Finance
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/ticker/{symbol}/news")
+def get_ticker_news(symbol: str) -> Dict[str, Any]:
+    sym = normalize_symbol(symbol.upper())
+    try:
+        import yfinance as yf
+        t = yf.Ticker(sym)
+        raw_news = t.news or []
+        articles = []
+        for item in raw_news[:20]:
+            articles.append({
+                "title": item.get("title", ""),
+                "publisher": item.get("publisher", ""),
+                "link": item.get("link", ""),
+                "published_at": item.get("providerPublishTime", 0),
+                "type": item.get("type", "STORY"),
+                "thumbnail": (item.get("thumbnail") or {}).get("resolutions", [{}])[0].get("url") if item.get("thumbnail") else None,
+            })
+        return {"symbol": sym, "news": articles}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PEERS — same-sector peers with key metrics
+# ─────────────────────────────────────────────────────────────────────────────
+SECTOR_PEERS: Dict[str, List[str]] = {
+    "Technology":             ["TCS.NS","INFY.NS","WIPRO.NS","HCLTECH.NS","LTIM.NS","TECHM.NS"],
+    "Financial Services":     ["HDFCBANK.NS","ICICIBANK.NS","SBIN.NS","AXISBANK.NS","KOTAKBANK.NS","INDUSINDBK.NS"],
+    "Energy":                 ["RELIANCE.NS","ONGC.NS","BPCL.NS","IOC.NS","COALINDIA.NS"],
+    "Consumer Defensive":     ["HINDUNILVR.NS","ITC.NS","NESTLEIND.NS","DABUR.NS","MARICO.NS"],
+    "Consumer Cyclical":      ["MARUTI.NS","TATAMOTORS.NS","M&M.NS","BAJAJ-AUTO.NS","HEROMOTOCO.NS"],
+    "Healthcare":             ["SUNPHARMA.NS","DRREDDY.NS","CIPLA.NS","DIVISLAB.NS","APOLLOHOSP.NS"],
+    "Basic Materials":        ["TATASTEEL.NS","JSWSTEEL.NS","HINDALCO.NS","VEDL.NS","SAIL.NS"],
+    "Communication Services": ["BHARTIARTL.NS","INDUSTOWER.NS","TATACOMM.NS"],
+    "Utilities":              ["NTPC.NS","POWERGRID.NS","TATAPOWER.NS"],
+    "Real Estate":            ["DLF.NS","GODREJPROP.NS","PRESTIGE.NS","OBEROIRLTY.NS"],
+}
+
+@app.get("/api/ticker/{symbol}/peers")
+def get_peers(symbol: str) -> Dict[str, Any]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    sym = normalize_symbol(symbol.upper())
+    try:
+        import yfinance as yf
+        t = yf.Ticker(sym)
+        info = t.info or {}
+        sector = info.get("sector", "")
+
+        candidates = [p for p in SECTOR_PEERS.get(sector, []) if p != sym][:5]
+        if not candidates:
+            return {"symbol": sym, "sector": sector, "peers": []}
+
+        def fetch_peer(s: str) -> Dict[str, Any]:
+            try:
+                pt = yf.Ticker(s)
+                fi = pt.fast_info
+                pi = pt.info or {}
+                price = getattr(fi, "last_price", None)
+                prev  = getattr(fi, "previous_close", None)
+                change_pct = round((price - prev) / prev * 100, 2) if price and prev and prev != 0 else None
+                return {
+                    "symbol": s.replace(".NS","").replace(".BO",""),
+                    "name": pi.get("shortName") or s,
+                    "price": round(float(price), 2) if price else None,
+                    "change_pct": change_pct,
+                    "market_cap": getattr(fi, "market_cap", None) or pi.get("marketCap"),
+                    "pe_ratio": pi.get("trailingPE"),
+                    "pb_ratio": pi.get("priceToBook"),
+                    "roe": pi.get("returnOnEquity"),
+                    "profit_margin": pi.get("profitMargins"),
+                    "revenue": pi.get("totalRevenue"),
+                }
+            except Exception:
+                return {}
+
+        peers_data: List[Dict] = []
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            futures = {ex.submit(fetch_peer, s): s for s in candidates}
+            for f in as_completed(futures):
+                r = f.result()
+                if r.get("symbol"):
+                    peers_data.append(r)
+
+        return {"symbol": sym, "sector": sector, "peers": sorted(peers_data, key=lambda x: x.get("market_cap") or 0, reverse=True)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host=settings.host, port=settings.port, reload=settings.debug)
