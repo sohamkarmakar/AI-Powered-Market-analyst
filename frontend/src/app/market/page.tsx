@@ -54,32 +54,32 @@ export default function MarketOverviewPage() {
         // Fallback mock data if server/DB is not active yet
         setPulse({
           market_condition: "BULLISH",
-          pulse_summary: "The broader market indexes display robust momentum, led by mega-cap technology and healthcare stocks, supported by positive macroeconomic indicators.",
+          pulse_summary: "The Indian stock market exhibits strong bullish momentum, with NIFTY 50 and SENSEX hitting near-record highs led by IT services expansion and robust domestic credit growth in Financial Services.",
           top_sectors: [
             {
-              sector: "Technology",
+              sector: "IT & Software Services",
               performance: "Strong",
-              outlook: "Sustained secular growth driven by enterprise software and AI investments."
+              outlook: "Strong pipeline in cloud and digital transformations driving major service exports."
             },
             {
-              sector: "Financials",
+              sector: "Financial Services",
               performance: "Stable",
-              outlook: "Net Interest Margin stabilization supporting regional and investment bank earnings."
+              outlook: "Robust credit growth and improving net interest margins supporting corporate banks."
             },
             {
-              sector: "Consumer Discretionary",
-              performance: "Stable",
-              outlook: "Resilient consumer spending patterns supporting retail industry valuations."
+              sector: "Energy & Power",
+              performance: "Strong",
+              outlook: "Green energy capital expenditures driving infrastructure and utility valuations."
             }
           ],
           market_drivers: [
-            "Cooling inflation reports bolstering monetary easing sentiment.",
-            "Strong corporate earnings season surpassing consensus beats.",
-            "Increased investment inflows into technology index funds."
+            "Strong domestic institutional investor (DII) inflows supporting market valuations.",
+            "Optimistic GDP growth projections by the Reserve Bank of India.",
+            "Cooling inflation reports enabling repo rate easing sentiment."
           ],
           macro_trends: [
-            "Evolving global supply routing policies.",
-            "Adoption of deep learning automation across traditional industries."
+            "Increasing financialization of household savings in India.",
+            "Digital public infrastructure driving efficiency across banking and retail sectors."
           ]
         });
         setUsingMock(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import PriceChart from "@/components/PriceChart";
 import SentimentGauge from "@/components/SentimentGauge";
@@ -22,7 +22,7 @@ import {
 export default function TickerDeepDivePage() {
   const router = useRouter();
   const params = useParams();
-  const symbol = (params.symbol as string || "AAPL").toUpperCase();
+  const symbol = (params.symbol as string || "RELIANCE").toUpperCase();
 
   const [tickerInfo, setTickerInfo] = useState<any>(null);
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
@@ -36,6 +36,13 @@ export default function TickerDeepDivePage() {
   const [usingMock, setUsingMock] = useState(false);
   const [timeframe, setTimeframe] = useState("1y");
   const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  // Live quote polling state
+  const [liveQuote, setLiveQuote] = useState<{ price: number; change: number | null; change_pct: number | null } | null>(null);
+  const [priceFlash, setPriceFlash] = useState<"up" | "down" | null>(null);
+  const [liveActive, setLiveActive] = useState(false);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPriceRef = useRef<number>(0);
 
   // Sync data fetch pipeline
   const loadData = async (currentTimeframe = timeframe, triggerGenerate = false) => {
@@ -82,61 +89,61 @@ export default function TickerDeepDivePage() {
       setConnectionError(err.message);
       setUsingMock(true);
       // Mock fallback data for a premium dashboard feel
+      const basePrice = symbol === "RELIANCE" ? 2500 : symbol === "TCS" ? 3800 : symbol === "INFY" ? 1500 : 500;
       setTickerInfo({
         symbol: symbol,
-        name: symbol === "AAPL" ? "Apple Inc." : symbol === "TSLA" ? "Tesla Inc." : `${symbol} Corporation`,
-        sector: symbol === "AAPL" ? "Technology" : symbol === "TSLA" ? "Consumer Cyclical" : "General Business",
-        industry: symbol === "AAPL" ? "Consumer Electronics" : symbol === "TSLA" ? "Auto Manufacturers" : "Diversified",
-        market_cap: 3450000000000,
-        pe_ratio: 32.45,
-        description: "Simulated offline preview mode. Start your FastAPI server on port 8000 to enable live financial APIs."
+        name: symbol === "RELIANCE" ? "Reliance Industries Ltd." : symbol === "TCS" ? "Tata Consultancy Services Ltd." : symbol === "INFY" ? "Infosys Ltd." : `${symbol} Ltd.`,
+        sector: symbol === "RELIANCE" ? "Energy & Power" : symbol === "TCS" ? "IT & Software" : symbol === "INFY" ? "IT & Software" : "General Business",
+        industry: symbol === "RELIANCE" ? "Oil & Gas / Retail" : symbol === "TCS" ? "IT Consulting" : symbol === "INFY" ? "IT Consulting" : "Diversified",
+        market_cap: symbol === "RELIANCE" ? 17200000000000 : symbol === "TCS" ? 13900000000000 : symbol === "INFY" ? 6400000000000 : 500000000000,
+        pe_ratio: symbol === "RELIANCE" ? 26.4 : symbol === "TCS" ? 30.1 : symbol === "INFY" ? 24.5 : 22.4,
+        description: "Simulated offline preview mode for Indian stock market. Start your FastAPI server on port 8000 to enable live financial APIs."
       });
       
       // Generating mock prices
       const mockLength = currentTimeframe === "1mo" ? 20 : currentTimeframe === "3mo" ? 60 : currentTimeframe === "6mo" ? 120 : 250;
       const mockPrices = Array.from({ length: mockLength }, (_, idx) => {
-        const base = symbol === "AAPL" ? 220 : symbol === "TSLA" ? 180 : 100;
-        const trend = idx * 0.4;
-        const randomFactor = Math.sin(idx / 5) * 8 + Math.cos(idx / 2) * 3;
-        const price = base + trend + randomFactor;
+        const trend = idx * 0.8;
+        const randomFactor = Math.sin(idx / 5) * 15 + Math.cos(idx / 2) * 5;
+        const price = basePrice + trend + randomFactor;
         return {
           date: new Date(Date.now() - (mockLength - idx) * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
           close: price,
-          open: price - 1.2,
-          high: price + 2.5,
-          low: price - 1.8,
-          volume: 24000000 + Math.floor(Math.random() * 5000000),
-          ema20: price - 3,
-          ema50: price - 8,
-          vwap: price - 5
+          open: price - 5,
+          high: price + 12,
+          low: price - 8,
+          volume: 5000000 + Math.floor(Math.random() * 1000000),
+          ema20: price - 10,
+          ema50: price - 30,
+          vwap: price - 15
         };
       });
       setPriceHistory(mockPrices);
       setIndicators(mockPrices);
       setOrbSignal({
         signal: "BULLISH_BREAKOUT",
-        opening_high: 224.5,
-        opening_low: 218.4,
-        latest_price: 226.8,
+        opening_high: basePrice + 10,
+        opening_low: basePrice - 8,
+        latest_price: basePrice + 18,
         reason: "Evaluated latest price against range (Offline)"
       });
       setAiAnalysis({
         news_summary: {
           overall_sentiment: "BULLISH",
           sentiment_score: 0.72,
-          key_themes: ["Strong cloud adoption", "New hardware release"],
+          key_themes: ["Domestic market leadership", "Green energy expansion", "Retail growth"],
           summary_points: [
-            "Institutional analysts upgrade stock target price due to services expansion.",
-            "Record hardware device shipments reported in the Asian supplier network."
+            "Strong quarterly operational metrics across key retail and telecom divisions.",
+            "Plans announced for capital investment expansion in renewable energy projects."
           ]
         },
         research_note: {
           recommendation: "BUY",
-          target_price: 245.0,
-          investment_thesis: "The asset showcases strong pricing power and recurring subscription growth, compensating for core device cycles.",
-          key_catalysts: ["Upcoming developer event in Q3.", "Services margins expanding to all-time highs."],
-          key_risks: ["Regulatory supply bottlenecks.", "Antitrust litigation in primary app store platforms."],
-          valuation_summary: "Trading at 28x forward earnings, representing historical value against compounding ROIC."
+          target_price: Math.round(basePrice * 1.15),
+          investment_thesis: "The company holds dominant positioning in retail, digital networks, and traditional refining, offering high resilience and compounding opportunities.",
+          key_catalysts: ["Rollout of 5G monetisation frameworks.", "Commissioning of clean energy gigafactories."],
+          key_risks: ["Crude margin refining volatility.", "Intense telecom tariff competition."],
+          valuation_summary: "Trading at historical averages relative to compounding return on capital employed."
         }
       });
     } finally {
@@ -147,6 +154,38 @@ export default function TickerDeepDivePage() {
   useEffect(() => {
     loadData(timeframe);
   }, [symbol, timeframe]);
+
+  // Live quote polling — lightweight /quote endpoint every 10s
+  const pollLiveQuote = useCallback(async () => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/ticker/${symbol}/quote`);
+      if (!res.ok) return;
+      const q = await res.json();
+      const newPrice: number = q.price ?? 0;
+      if (newPrice > 0) {
+        if (lastPriceRef.current !== 0 && newPrice !== lastPriceRef.current) {
+          const dir = newPrice > lastPriceRef.current ? "up" : "down";
+          setPriceFlash(dir);
+          setTimeout(() => setPriceFlash(null), 800);
+        }
+        lastPriceRef.current = newPrice;
+        setLiveQuote({ price: newPrice, change: q.change ?? null, change_pct: q.change_pct ?? null });
+      }
+    } catch { /* ignore */ }
+  }, [symbol]);
+
+  useEffect(() => {
+    if (loading || usingMock) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    setLiveActive(true);
+    pollLiveQuote(); // immediate first poll
+    pollRef.current = setInterval(pollLiveQuote, 10000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [loading, usingMock, pollLiveQuote]);
 
   const handleGenerateResearch = async () => {
     setGeneratingAi(true);
@@ -193,7 +232,7 @@ export default function TickerDeepDivePage() {
         {/* Search input Autocomplete */}
         <div className="w-full md:w-80">
           <SearchAutocomplete
-            placeholder="Search symbol (e.g. AAPL, TSLA)..."
+            placeholder="Search symbol (e.g. RELIANCE, TCS)..."
             initialValue={symbol}
             onSelect={(sym) => router.push(`/ticker/${sym}`)}
           />
@@ -248,20 +287,55 @@ export default function TickerDeepDivePage() {
               {/* Price Metrics */}
               <div className="flex gap-8">
                 <div className="text-right">
-                  <div className="text-2xl font-mono font-bold text-white">
-                    ${typeof priceStats.price === "number" ? priceStats.price.toFixed(2) : "N/A"}
-                  </div>
-                  <div className={`flex items-center text-xs font-mono font-semibold justify-end mt-1 ${
-                    priceStats.change >= 0 ? "text-emerald-400" : "text-rose-400"
+                  <style>{`
+                    @keyframes flashPriceUp {
+                      0% { color: #10b981; text-shadow: 0 0 12px rgba(16,185,129,0.8); }
+                      100% { color: white; text-shadow: none; }
+                    }
+                    @keyframes flashPriceDown {
+                      0% { color: #ef4444; text-shadow: 0 0 12px rgba(239,68,68,0.8); }
+                      100% { color: white; text-shadow: none; }
+                    }
+                    .price-flash-up { animation: flashPriceUp 0.8s ease-out forwards; }
+                    .price-flash-down { animation: flashPriceDown 0.8s ease-out forwards; }
+                  `}</style>
+                  {/* Live indicator */}
+                  {liveActive && !usingMock && (
+                    <div className="flex items-center justify-end space-x-1.5 mb-1">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest">Live · 10s</span>
+                    </div>
+                  )}
+                  <div className={`text-2xl font-mono font-bold transition-colors ${
+                    priceFlash === "up" ? "price-flash-up" :
+                    priceFlash === "down" ? "price-flash-down" : "text-white"
                   }`}>
-                    {priceStats.change >= 0 ? <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 mr-0.5" />}
-                    {priceStats.change >= 0 ? "+" : ""}{typeof priceStats.change === "number" ? priceStats.change.toFixed(2) : "0.00"} ({typeof priceStats.changePercent === "number" ? priceStats.changePercent.toFixed(2) : "0.00"}%)
+                    {liveQuote
+                      ? `₹${liveQuote.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : `₹${typeof priceStats.price === "number" ? priceStats.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "N/A"}`
+                    }
                   </div>
+                  {(() => {
+                    const ch = liveQuote?.change ?? priceStats.change;
+                    const cp = liveQuote?.change_pct ?? priceStats.changePercent;
+                    const isUp = ch >= 0;
+                    return (
+                      <div className={`flex items-center text-xs font-mono font-semibold justify-end mt-1 ${
+                        isUp ? "text-emerald-400" : "text-rose-400"
+                      }`}>
+                        {isUp ? <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 mr-0.5" />}
+                        {isUp ? "+" : ""}{typeof ch === "number" ? ch.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"} ({typeof cp === "number" ? cp.toFixed(2) : "0.00"}%)
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="text-right border-l border-[rgba(255,255,255,0.06)] pl-8">
                   <div className="text-sm font-mono font-bold text-white">
-                    {typeof tickerInfo.market_cap === "number" ? `$${(tickerInfo.market_cap / 1e12).toFixed(2)}T` : "N/A"}
+                    {typeof tickerInfo.market_cap === "number" ? `₹${(tickerInfo.market_cap / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr` : "N/A"}
                   </div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider font-mono mt-1">Market Cap</p>
                 </div>
@@ -363,7 +437,7 @@ export default function TickerDeepDivePage() {
                       aiAnalysis.research_note.recommendation === "SELL" ? "bg-rose-500/10 text-rose-400 border-rose-500/25" :
                       "bg-slate-500/10 text-slate-400 border-slate-500/25"
                     }`}>
-                      REC: {aiAnalysis.research_note.recommendation} | TARGET: ${aiAnalysis.research_note.target_price}
+                      REC: {aiAnalysis.research_note.recommendation} | TARGET: ₹{aiAnalysis.research_note.target_price.toLocaleString("en-IN")}
                     </div>
                   )}
                 </div>

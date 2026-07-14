@@ -3,6 +3,14 @@ import pandas as pd
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+def normalize_symbol(symbol: str) -> str:
+    symbol = symbol.upper().strip()
+    if not symbol:
+        return symbol
+    if symbol.startswith("^") or "." in symbol:
+        return symbol
+    return f"{symbol}.NS"
+
 class YFinanceService:
     @staticmethod
     def get_ticker_info(symbol: str) -> Dict[str, Any]:
@@ -10,18 +18,19 @@ class YFinanceService:
         Fetch company profile and fundamental data for a given ticker.
         """
         try:
-            ticker = yf.Ticker(symbol)
+            normalized_symbol = normalize_symbol(symbol)
+            ticker = yf.Ticker(normalized_symbol)
             info = ticker.info
             
             if not info or 'symbol' not in info:
                 # If yfinance returned empty dict or invalid ticker
-                raise ValueError(f"Ticker {symbol} not found or has no info.")
+                raise ValueError(f"Ticker {normalized_symbol} not found or has no info.")
 
             # Map yfinance info keys to our expected structure
             # Handle float conversions and defaults
             return {
-                "symbol": info.get("symbol", symbol).upper(),
-                "name": info.get("longName") or info.get("shortName") or symbol.upper(),
+                "symbol": info.get("symbol", normalized_symbol).upper(),
+                "name": info.get("longName") or info.get("shortName") or normalized_symbol.upper(),
                 "sector": info.get("sector", "N/A"),
                 "industry": info.get("industry", "N/A"),
                 "market_cap": info.get("marketCap"),
@@ -40,11 +49,12 @@ class YFinanceService:
         Intervals: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
         """
         try:
-            ticker = yf.Ticker(symbol)
+            normalized_symbol = normalize_symbol(symbol)
+            ticker = yf.Ticker(normalized_symbol)
             df = ticker.history(period=period, interval=interval)
             
             if df.empty:
-                raise ValueError(f"No price history found for ticker {symbol} for period {period}.")
+                raise ValueError(f"No price history found for ticker {normalized_symbol} for period {period}.")
             
             # Reset index to make Date a column
             df = df.reset_index()
@@ -80,7 +90,8 @@ class YFinanceService:
         Fetch recent news articles for a ticker from Yahoo Finance.
         """
         try:
-            ticker = yf.Ticker(symbol)
+            normalized_symbol = normalize_symbol(symbol)
+            ticker = yf.Ticker(normalized_symbol)
             raw_news = ticker.news
             
             news_items = []
@@ -140,9 +151,20 @@ class YFinanceService:
                 results = []
                 for q in quotes:
                     quote_type = q.get("quoteType", "")
-                    if quote_type in ["EQUITY", "ETF"]:
+                    symbol = q.get("symbol", "").upper()
+                    
+                    # Filter for Indian market: symbol ends with .NS or .BO, or starts with ^ (indices)
+                    is_indian = (
+                        symbol.endswith(".NS") or 
+                        symbol.endswith(".BO") or 
+                        symbol.startswith("^NSE") or 
+                        symbol.startswith("^BSESN") or 
+                        symbol in ["^NSEI", "^BSESN", "^NSEBANK", "^CNXIT"]
+                    )
+                    
+                    if (quote_type in ["EQUITY", "ETF", "INDEX"]) and is_indian:
                         results.append({
-                            "symbol": q.get("symbol", "").upper(),
+                            "symbol": symbol,
                             "name": q.get("shortname") or q.get("longname") or q.get("symbol", ""),
                             "exchange": q.get("exchDisp") or q.get("exchange") or "N/A",
                             "type": quote_type

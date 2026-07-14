@@ -94,8 +94,8 @@ class IndicatorsService:
             if df.empty:
                 return default_response
             
-            # Convert DatetimeIndex to Eastern Time
-            df.index = df.index.tz_convert('US/Eastern')
+            # Convert DatetimeIndex to Kolkata/IST Time
+            df.index = df.index.tz_convert('Asia/Kolkata')
             
             # Identify the latest date with data
             latest_date = df.index.date[-1]
@@ -104,8 +104,8 @@ class IndicatorsService:
             if latest_day_df.empty:
                 return default_response
 
-            # Find opening range (9:30 AM to 10:00 AM Eastern)
-            opening_range = latest_day_df.between_time('09:30', '10:00')
+            # Find opening range (9:15 AM to 9:45 AM Kolkata/IST)
+            opening_range = latest_day_df.between_time('09:15', '09:45')
             
             # If standard exchange times are different or data missing, use first 6 bars (30 mins of 5m intervals)
             if opening_range.empty:

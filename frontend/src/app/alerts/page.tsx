@@ -35,7 +35,7 @@ export default function AlertsFeedPage() {
       setLoading(true);
       try {
         // Query indicators from the backend to construct dynamic alerts based on database records
-        const activeSymbols = ["AAPL", "TSLA", "MSFT", "AMZN", "NVDA"];
+        const activeSymbols = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"];
         const dynamicAlerts: SystemAlert[] = [];
 
         for (const sym of activeSymbols) {
@@ -77,7 +77,7 @@ export default function AlertsFeedPage() {
                     symbol: sym,
                     type: "BULLISH_ORB",
                     severity: "MEDIUM",
-                    message: `${sym} triggered a Bullish 30M Opening Range Breakout above $${indData.orb_signal.opening_high.toFixed(2)}.`,
+                    message: `${sym} triggered a Bullish 30M Opening Range Breakout above ₹${indData.orb_signal.opening_high.toLocaleString("en-IN", { minimumFractionDigits: 2 })}.`,
                     timestamp: new Date().toISOString(),
                     acknowledged: false
                   });
@@ -87,7 +87,7 @@ export default function AlertsFeedPage() {
                     symbol: sym,
                     type: "BEARISH_ORB",
                     severity: "MEDIUM",
-                    message: `${sym} triggered a Bearish 30M Opening Range Breakout below $${indData.orb_signal.opening_low.toFixed(2)}.`,
+                    message: `${sym} triggered a Bearish 30M Opening Range Breakout below ₹${indData.orb_signal.opening_low.toLocaleString("en-IN", { minimumFractionDigits: 2 })}.`,
                     timestamp: new Date().toISOString(),
                     acknowledged: false
                   });
@@ -109,37 +109,37 @@ export default function AlertsFeedPage() {
         setAlerts([
           {
             id: "1",
-            symbol: "TSLA",
+            symbol: "ICICIBANK",
             type: "RSI_OVERBOUGHT",
             severity: "HIGH",
-            message: "Tesla is trading at extreme overbought conditions with a daily RSI (14) of 74.24.",
+            message: "ICICI Bank is trading at extreme overbought conditions with a daily RSI (14) of 72.80.",
             timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
             acknowledged: false
           },
           {
             id: "2",
-            symbol: "NVDA",
+            symbol: "TCS",
             type: "BULLISH_ORB",
             severity: "MEDIUM",
-            message: "NVIDIA triggered a Bullish 30M Opening Range Breakout, breaking above the opening high of $116.50 to trade at $118.30.",
+            message: "TCS triggered a Bullish 30M Opening Range Breakout, breaking above the opening high of ₹3,810.00 to trade at ₹3,825.50.",
             timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
             acknowledged: false
           },
           {
             id: "3",
-            symbol: "AAPL",
+            symbol: "RELIANCE",
             type: "BEARISH_ORB",
             severity: "MEDIUM",
-            message: "Apple triggered a Bearish 30M Opening Range Breakout, breaking below the opening low of $316.45 to trade at $316.18.",
+            message: "Reliance triggered a Bearish 30M Opening Range Breakout, breaking below the opening low of ₹2,530.00 to trade at ₹2,525.00.",
             timestamp: new Date(Date.now() - 4 * 3600000).toISOString(),
             acknowledged: false
           },
           {
             id: "4",
-            symbol: "MSFT",
+            symbol: "INFY",
             type: "EMA_CROSSOVER",
             severity: "LOW",
-            message: "Microsoft price crossed below the EMA 50 support line, currently trading at $418.20.",
+            message: "Infosys price crossed below the EMA 50 support line, currently trading at ₹1,542.80.",
             timestamp: new Date(Date.now() - 12 * 3600000).toISOString(),
             acknowledged: true
           }

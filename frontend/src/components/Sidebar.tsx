@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { 
   TrendingUp, 
   LayoutDashboard, 
-  ListFilter, 
+  Star, 
   Bell, 
   Activity,
   ChevronRight
@@ -22,15 +22,15 @@ export default function Sidebar() {
     },
     {
       name: "Ticker Deep-Dive",
-      href: "/ticker/AAPL",
+      href: "/ticker/RELIANCE",
       icon: TrendingUp,
-      // Matches subpaths like /ticker/AAPL or /ticker/TSLA
+      // Matches subpaths like /ticker/RELIANCE or /ticker/TCS
       match: (path: string) => path.startsWith("/ticker"),
     },
     {
-      name: "Stock Screener",
+      name: "Watchlist",
       href: "/screener",
-      icon: ListFilter,
+      icon: Star,
     },
     {
       name: "Alerts Feed",

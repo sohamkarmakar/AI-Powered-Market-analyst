@@ -14,14 +14,14 @@ export default function SectorHeatmap() {
   // Preset list of financial sectors with mock metrics to show a highly complete Bloomberg-grade heatmap
   const sectors: SectorData[] = useMemo(() => {
     return [
-      { name: "Technology", change: 2.14, sentiment: "BULLISH", count: 8 },
-      { name: "Financials", change: 1.05, sentiment: "BULLISH", count: 4 },
-      { name: "Healthcare", change: -0.42, sentiment: "NEUTRAL", count: 5 },
-      { name: "Consumer Discretionary", change: 0.88, sentiment: "BULLISH", count: 6 },
-      { name: "Communication Services", change: -1.25, sentiment: "BEARISH", count: 3 },
-      { name: "Energy", change: 3.42, sentiment: "BULLISH", count: 4 },
-      { name: "Industrials", change: 0.12, sentiment: "NEUTRAL", count: 4 },
-      { name: "Utilities", change: -0.75, sentiment: "BEARISH", count: 2 },
+      { name: "IT & Software", change: 2.14, sentiment: "BULLISH", count: 8 },
+      { name: "Financial Services", change: 1.05, sentiment: "BULLISH", count: 4 },
+      { name: "Healthcare & Pharma", change: -0.42, sentiment: "NEUTRAL", count: 5 },
+      { name: "Automobile", change: 0.88, sentiment: "BULLISH", count: 6 },
+      { name: "FMCG", change: -1.25, sentiment: "BEARISH", count: 3 },
+      { name: "Energy & Power", change: 3.42, sentiment: "BULLISH", count: 4 },
+      { name: "Metals & Mining", change: 0.12, sentiment: "NEUTRAL", count: 4 },
+      { name: "Infrastructure", change: -0.75, sentiment: "BEARISH", count: 2 },
       { name: "Real Estate", change: -0.18, sentiment: "NEUTRAL", count: 3 },
     ];
   }, []);
