@@ -10,9 +10,11 @@ import {
   Activity,
   ChevronRight
 } from "lucide-react";
+import { useTheme } from "./ThemeContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { theme } = useTheme();
 
   const menuItems = [
     {
@@ -24,7 +26,6 @@ export default function Sidebar() {
       name: "Ticker Deep-Dive",
       href: "/ticker/RELIANCE",
       icon: TrendingUp,
-      // Matches subpaths like /ticker/RELIANCE or /ticker/TCS
       match: (path: string) => path.startsWith("/ticker"),
     },
     {
@@ -40,15 +41,15 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-[#0a0d1a] border-r border-[rgba(255,255,255,0.06)] flex flex-col h-screen sticky top-0 shrink-0">
+    <aside className="w-64 bg-bg-secondary border-r border-border-primary flex flex-col h-screen sticky top-0 shrink-0">
       {/* Brand Header */}
-      <div className="p-6 border-b border-[rgba(255,255,255,0.06)] flex items-center space-x-3">
-        <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+      <div className="p-6 border-b border-border-primary flex items-center space-x-3">
+        <div className="w-9 h-9 rounded-lg bg-accent-primary flex items-center justify-center shadow-lg shadow-accent-primary/20">
           <Activity className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-sm font-bold tracking-wider uppercase text-white">Market Rover</h1>
-          <span className="text-[10px] text-gray-500 font-mono">AI EQUITY HUB</span>
+          <h1 className="text-sm font-bold tracking-wider uppercase text-text-primary font-sans">Market Rover</h1>
+          <span className="text-[10px] text-text-muted font-mono">AI EQUITY HUB</span>
         </div>
       </div>
 
@@ -67,18 +68,28 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group text-sm ${
                 isActive
-                  ? "bg-blue-600/10 text-blue-400 border border-blue-500/20"
-                  : "text-gray-400 hover:text-white hover:bg-white/[0.02]"
+                  ? theme === "light"
+                    ? "bg-accent-primary text-white border border-transparent shadow-sm font-semibold"
+                    : "bg-accent-primary/10 text-accent-primary border border-accent-primary/20 font-semibold"
+                  : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
               }`}
             >
               <div className="flex items-center space-x-3">
                 <Icon className={`w-4 h-4 transition-transform duration-200 group-hover:scale-110 ${
-                  isActive ? "text-blue-400" : "text-gray-400 group-hover:text-white"
+                  isActive
+                    ? theme === "light"
+                      ? "text-white"
+                      : "text-accent-primary"
+                    : "text-text-secondary group-hover:text-text-primary"
                 }`} />
-                <span className="font-medium">{item.name}</span>
+                <span>{item.name}</span>
               </div>
               <ChevronRight className={`w-3 h-3 transition-transform duration-200 opacity-0 group-hover:opacity-100 ${
-                isActive ? "opacity-100 text-blue-400" : "text-gray-500"
+                isActive
+                  ? theme === "light"
+                    ? "opacity-100 text-white"
+                    : "opacity-100 text-accent-primary"
+                  : "text-text-muted"
               }`} />
             </Link>
           );
@@ -86,10 +97,10 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Profile Info / Connection Status */}
-      <div className="p-4 border-t border-[rgba(255,255,255,0.06)] bg-[#070912]/50">
+      <div className="p-4 border-t border-border-primary bg-bg-primary/50">
         <div className="flex items-center space-x-3 p-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-xs text-gray-500 font-mono">FastAPI API Connected</span>
+          <span className="text-xs text-text-muted font-mono">FastAPI API Connected</span>
         </div>
       </div>
     </aside>

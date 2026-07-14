@@ -1,9 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   ResponsiveContainer,
-  AreaChart,
   ComposedChart,
   Area,
   Line,
@@ -30,7 +29,6 @@ interface ChartDataPoint {
 interface PriceChartProps {
   data: ChartDataPoint[];
   symbol?: string;
-  /** If provided, the chart will fetch its own intraday data for 1d/5d/1wk */
   liveSymbol?: string;
 }
 
@@ -46,19 +44,19 @@ const TIMEFRAMES = [
 
 const API = "http://127.0.0.1:8000";
 
+function cssVar(name: string): string {
+  if (typeof window === "undefined") return "";
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 function formatTick(dateStr: string, tfKey: string): string {
   try {
     const d = new Date(dateStr);
     if (tfKey === "1d" || tfKey === "5d") {
       return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
     }
-    if (tfKey === "1wk" || tfKey === "1mo") {
-      return d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-    }
     return d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-  } catch {
-    return dateStr;
-  }
+  } catch { return dateStr; }
 }
 
 function formatTooltipLabel(dateStr: string, tfKey: string): string {
@@ -72,9 +70,7 @@ function formatTooltipLabel(dateStr: string, tfKey: string): string {
       }) + " IST";
     }
     return d.toLocaleDateString("en-IN", { dateStyle: "medium" });
-  } catch {
-    return dateStr;
-  }
+  } catch { return dateStr; }
 }
 
 export default function PriceChart({ data, liveSymbol }: PriceChartProps) {
@@ -89,7 +85,6 @@ export default function PriceChart({ data, liveSymbol }: PriceChartProps) {
 
   const isIntraday = tfKey === "1d" || tfKey === "5d" || tfKey === "1wk";
 
-  // Fetch intraday / short-interval data from backend
   const fetchIntraday = useCallback(async (key: string) => {
     if (!liveSymbol) return;
     const tf = TIMEFRAMES.find(t => t.key === key);
@@ -97,58 +92,30 @@ export default function PriceChart({ data, liveSymbol }: PriceChartProps) {
     setIntradayLoading(true);
     setIntradayError(false);
     try {
-      // Use /intraday for 1d/5d, else use /ticker for 1wk/1mo
       let url = "";
-      if (key === "1d") {
-        url = `${API}/api/ticker/${liveSymbol}/intraday?period=1d`;
-      } else if (key === "5d") {
-        url = `${API}/api/ticker/${liveSymbol}/intraday?period=5d`;
-      } else {
-        url = `${API}/api/ticker/${liveSymbol}?period=${tf.period}&interval=${tf.interval}`;
-      }
+      if (key === "1d") url = `${API}/api/ticker/${liveSymbol}/intraday?period=1d`;
+      else if (key === "5d") url = `${API}/api/ticker/${liveSymbol}/intraday?period=5d`;
+      else url = `${API}/api/ticker/${liveSymbol}?period=${tf.period}&interval=${tf.interval}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("fetch failed");
       const raw = await res.json();
-
       let candles: ChartDataPoint[] = [];
       if (key === "1d" || key === "5d") {
-        candles = (raw.candles || []).map((c: any) => ({
-          date: c.t,
-          close: c.c,
-          open: c.o,
-          high: c.h,
-          low: c.l,
-          volume: c.v,
-        }));
+        candles = (raw.candles || []).map((c: any) => ({ date: c.t, close: c.c, open: c.o, high: c.h, low: c.l, volume: c.v }));
       } else {
-        candles = (raw.price_history || []).map((c: any) => ({
-          date: c.date,
-          close: c.close,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          volume: c.volume,
-        }));
+        candles = (raw.price_history || []).map((c: any) => ({ date: c.date, close: c.close, open: c.open, high: c.high, low: c.low, volume: c.volume }));
       }
       setIntradayData(candles);
-    } catch {
-      setIntradayError(true);
-      setIntradayData([]);
-    } finally {
-      setIntradayLoading(false);
-    }
+    } catch { setIntradayError(true); setIntradayData([]); }
+    finally { setIntradayLoading(false); }
   }, [liveSymbol]);
 
   useEffect(() => {
     if (isIntraday || (tfKey !== "1mo" && tfKey !== "3mo" && tfKey !== "6mo" && tfKey !== "1y")) {
-      // For 1wk we also fetch
       fetchIntraday(tfKey);
-    } else {
-      setIntradayData([]);
-    }
+    } else { setIntradayData([]); }
   }, [tfKey, fetchIntraday, isIntraday]);
 
-  // Choose data source
   const activeData = useMemo((): ChartDataPoint[] => {
     if ((isIntraday || tfKey === "1wk") && intradayData.length > 0) return intradayData;
     return data.map(d => ({
@@ -163,47 +130,52 @@ export default function PriceChart({ data, liveSymbol }: PriceChartProps) {
   const yDomain = useMemo(() => {
     if (activeData.length === 0) return [0, 100];
     const prices = activeData.map(d => d.close).filter(Boolean);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const pad = (max - min) * 0.04;
+    const min = Math.min(...prices), max = Math.max(...prices), pad = (max - min) * 0.04;
     return [Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
   }, [activeData]);
-
-  const maxVol = useMemo(() => {
-    if (!showVolume) return 0;
-    const vols = activeData.map(d => d.volume || 0);
-    return Math.max(...vols, 1);
-  }, [activeData, showVolume]);
 
   const isPositive = useMemo(() => {
     if (activeData.length < 2) return true;
     return activeData[activeData.length - 1].close >= activeData[0].close;
   }, [activeData]);
 
-  const priceColor = isPositive ? "#10b981" : "#ef4444";
+  const priceColor = isPositive
+    ? cssVar("--chart-price-up") || "#10b981"
+    : cssVar("--chart-price-down") || "#ef4444";
   const gradientId = `priceGrad-${isPositive ? "up" : "down"}`;
 
+  const INDICATORS = [
+    { key: "ema20",  label: "EMA 20", hexColor: "#f59e0b", active: showEma20,  toggle: () => setShowEma20(p => !p) },
+    { key: "ema50",  label: "EMA 50", hexColor: "#d946ef", active: showEma50,  toggle: () => setShowEma50(p => !p) },
+    { key: "vwap",   label: "VWAP",   hexColor: "#06b6d4", active: showVwap,   toggle: () => setShowVwap(p => !p) },
+    { key: "volume", label: "Volume", hexColor: "#6366f1", active: showVolume, toggle: () => setShowVolume(p => !p) },
+  ];
+
   return (
-    <div className="flex flex-col h-full bg-[#0c1020]/45 border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
-      {/* ── Header ─────────────────────────────────────── */}
+    <div
+      className="flex flex-col h-full rounded-2xl p-5"
+      style={{ background: "var(--chart-bg)", border: "1px solid var(--chart-border)" }}
+    >
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
         <div>
-          <h3 className="text-sm font-bold text-white">Price History & Indicators</h3>
-          <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-text-primary">Price History &amp; Indicators</h3>
+          <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider">
             {isIntraday ? "INTRADAY · IST" : tfKey === "1wk" ? "HOURLY" : "DAILY OHLCV"}
           </p>
         </div>
-
-        {/* Timeframe buttons */}
-        <div className="flex items-center gap-1 bg-black/20 rounded-xl p-1 border border-white/[0.05]">
+        <div
+          className="flex items-center gap-1 rounded-xl p-1"
+          style={{ background: "var(--bg-tertiary)", border: "1px solid var(--border-primary)" }}
+        >
           {TIMEFRAMES.map(tf => (
             <button
               key={tf.key}
               onClick={() => setTfKey(tf.key)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide cursor-pointer transition-all duration-150 ${
                 tfKey === tf.key
-                  ? "bg-blue-600 text-white shadow shadow-blue-500/30"
-                  : "text-gray-500 hover:text-white hover:bg-white/[0.05]"
+                  ? "bg-accent-primary text-white shadow shadow-accent-primary/30"
+                  : "text-text-muted hover:text-text-primary hover:bg-bg-elevated"
               }`}
             >
               {tf.label}
@@ -212,43 +184,38 @@ export default function PriceChart({ data, liveSymbol }: PriceChartProps) {
         </div>
       </div>
 
-      {/* ── Overlay toggles ─────────────────────────────── */}
+      {/* Indicator toggles */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {[
-          { key: "ema20",   label: "EMA 20", color: "amber",   active: showEma20,  toggle: () => setShowEma20(p => !p) },
-          { key: "ema50",   label: "EMA 50", color: "fuchsia", active: showEma50,  toggle: () => setShowEma50(p => !p) },
-          { key: "vwap",    label: "VWAP",   color: "cyan",    active: showVwap,   toggle: () => setShowVwap(p => !p) },
-          { key: "volume",  label: "Volume", color: "indigo",  active: showVolume, toggle: () => setShowVolume(p => !p) },
-        ].map(({ key, label, color, active, toggle }) => (
+        {INDICATORS.map(({ key, label, hexColor, active, toggle }) => (
           <button
             key={key}
             onClick={toggle}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-medium cursor-pointer transition-all duration-200 ${
-              active
-                ? `bg-${color}-500/10 text-${color}-400 border-${color}-500/30`
-                : "bg-transparent text-gray-600 border-gray-800 hover:border-gray-700 hover:text-gray-400"
-            }`}
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-medium cursor-pointer transition-all duration-200"
+            style={active
+              ? { background: `${hexColor}1a`, color: hexColor, borderColor: `${hexColor}55` }
+              : { background: "transparent", color: "var(--toggle-inactive-text)", borderColor: "var(--toggle-inactive-border)" }
+            }
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${active ? `bg-${color}-400` : "bg-gray-700"}`} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? hexColor : "var(--text-muted)" }} />
             <span>{label}</span>
           </button>
         ))}
       </div>
 
-      {/* ── Chart Canvas ────────────────────────────────── */}
+      {/* Chart */}
       <div className="flex-1 w-full min-h-[260px]">
         {intradayLoading ? (
           <div className="flex items-center justify-center h-full space-x-2">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-mono text-gray-500">Loading {TIMEFRAMES.find(t=>t.key===tfKey)?.label} data…</span>
+            <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-mono text-text-muted">Loading {TIMEFRAMES.find(t => t.key === tfKey)?.label} data…</span>
           </div>
         ) : intradayError && (isIntraday || tfKey === "1wk") ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs font-mono text-gray-600">Failed to load intraday data. Try another timeframe.</p>
+            <p className="text-xs font-mono text-text-muted">Failed to load intraday data. Try another timeframe.</p>
           </div>
         ) : activeData.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs font-mono text-gray-600">No chart data available.</p>
+            <p className="text-xs font-mono text-text-muted">No chart data available.</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -259,78 +226,58 @@ export default function PriceChart({ data, liveSymbol }: PriceChartProps) {
                   <stop offset="95%" stopColor={priceColor} stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={d => formatTick(d, tfKey)}
-                stroke="rgba(255,255,255,0.12)"
-                tick={{ fill: "#4b5563", fontSize: 9, fontFamily: "monospace" }}
+                stroke="var(--border-subtle)"
+                tick={{ fill: "var(--text-muted)", fontSize: 9, fontFamily: "monospace" }}
                 dy={8}
                 interval="preserveStartEnd"
                 minTickGap={40}
               />
               <YAxis
                 domain={yDomain}
-                stroke="rgba(255,255,255,0.12)"
-                tick={{ fill: "#4b5563", fontSize: 9, fontFamily: "monospace" }}
+                stroke="var(--border-subtle)"
+                tick={{ fill: "var(--text-muted)", fontSize: 9, fontFamily: "monospace" }}
                 dx={-4}
-                tickFormatter={v => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+                tickFormatter={v => `${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#080d1a",
-                  borderColor: "rgba(255,255,255,0.08)",
+                  backgroundColor: "var(--bg-elevated)",
+                  borderColor: "var(--border-primary)",
                   borderRadius: "10px",
-                  color: "#f1f5f9",
+                  color: "var(--text-primary)",
                   fontSize: "11px",
                   fontFamily: "monospace",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+                  boxShadow: "var(--shadow)",
                 }}
                 labelFormatter={l => formatTooltipLabel(l, tfKey)}
-                formatter={(value: any, name: any) => [`₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, String(name)]}
+                formatter={(value: any, name: any) => [`${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, String(name)]}
               />
-
-              {/* Volume bars (background layer) */}
               {showVolume && (
-                <Bar
-                  dataKey="volume"
-                  name="Volume"
-                  yAxisId="vol"
-                  fill="rgba(99,102,241,0.12)"
-                  stroke="rgba(99,102,241,0.3)"
-                  strokeWidth={0}
-                />
+                <Bar dataKey="volume" name="Volume" yAxisId="vol"
+                  fill="var(--chart-volume-fill)" stroke="var(--chart-volume-stroke)" strokeWidth={0} />
               )}
-
-              {/* Price area */}
               <Area
-                type="monotone"
-                dataKey="close"
-                name="Price"
-                stroke={priceColor}
-                strokeWidth={1.8}
-                fillOpacity={1}
-                fill={`url(#${gradientId})`}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0, fill: priceColor }}
+                type="monotone" dataKey="close" name="Price"
+                stroke={priceColor} strokeWidth={1.8}
+                fillOpacity={1} fill={`url(#${gradientId})`}
+                dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: priceColor }}
               />
-
-              {/* EMA 20 */}
               {showEma20 && !isIntraday && (
                 <Line type="monotone" dataKey="ema20" name="EMA 20"
-                  stroke="#f59e0b" strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} />
+                  stroke="var(--chart-ema20)" strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} />
               )}
-              {/* EMA 50 */}
               {showEma50 && !isIntraday && (
                 <Line type="monotone" dataKey="ema50" name="EMA 50"
-                  stroke="#d946ef" strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} />
+                  stroke="var(--chart-ema50)" strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} />
               )}
-              {/* VWAP */}
               {showVwap && (
                 <Line type="monotone" dataKey="vwap" name="VWAP"
-                  stroke="#06b6d4" strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} />
+                  stroke="var(--chart-vwap)" strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} />
               )}
-
               {showVolume && <YAxis yAxisId="vol" orientation="right" hide />}
             </ComposedChart>
           </ResponsiveContainer>

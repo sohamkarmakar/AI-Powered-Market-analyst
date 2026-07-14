@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import { ThemeProvider } from "@/components/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,12 +30,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="h-full bg-[#070a14] text-slate-100 flex overflow-hidden" suppressHydrationWarning>
-        <Sidebar />
-        <main className="flex-1 flex flex-col h-full overflow-y-auto min-w-0 bg-[#070a14]">
-          {children}
-        </main>
-      </body>
+      <ThemeProvider>
+        <body className="h-full bg-bg-primary text-text-primary flex overflow-hidden font-sans" suppressHydrationWarning>
+          <Sidebar />
+          <main className="flex-1 flex flex-col h-full overflow-y-auto min-w-0 bg-bg-primary">
+            {children}
+          </main>
+        </body>
+      </ThemeProvider>
     </html>
   );
 }

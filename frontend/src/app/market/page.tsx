@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import SectorHeatmap from "@/components/SectorHeatmap";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
+import { useTheme } from "@/components/ThemeContext";
 import {
   Globe,
   TrendingUp,
@@ -81,43 +83,43 @@ const StockTable = ({ title, data, type }: { title: string; data: any[]; type: "
   return (
     <div className="glass-panel p-5 space-y-4 flex flex-col justify-between h-full">
       <div>
-        <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-3 mb-2">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{title}</h3>
-          <span className="text-[10px] text-gray-500 font-mono">NSE LIVE</span>
+        <div className="flex items-center justify-between border-b border-border-primary pb-3 mb-2">
+          <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">{title}</h3>
+          <span className="text-[10px] text-text-muted font-mono">NSE LIVE</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className="text-gray-500 border-b border-white/[0.04] pb-2">
+              <tr className="text-text-muted border-b border-border-subtle pb-2">
                 <th className="pb-2 font-normal">Symbol</th>
                 <th className="pb-2 text-right font-normal">Price</th>
                 <th className="pb-2 text-right font-normal">{type === "active" ? "Volume" : "Change"}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.02]">
+            <tbody className="divide-y divide-border-subtle">
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-4 text-center text-gray-500 font-sans">Fetching live data...</td>
+                  <td colSpan={3} className="py-4 text-center text-text-muted font-sans">Fetching live data...</td>
                 </tr>
               ) : (
                 data.map((stock) => {
                   const isGain = stock.change_pct >= 0;
                   return (
-                    <tr key={stock.symbol} className="hover:bg-white/[0.02] transition-colors duration-150">
+                    <tr key={stock.symbol} className="hover:bg-bg-tertiary transition-colors duration-150">
                       <td className="py-2.5">
                         <a
                           href={`/ticker/${stock.symbol}`}
-                          className="text-blue-400 hover:text-blue-300 font-bold transition-colors"
+                          className="text-accent-primary hover:text-accent-primary/80 font-bold transition-colors"
                         >
                           {stock.symbol}
                         </a>
-                        <span className="block text-[9px] text-gray-500 truncate max-w-[120px]">{stock.name}</span>
+                        <span className="block text-[9px] text-text-muted truncate max-w-[120px]">{stock.name}</span>
                       </td>
-                      <td className="py-2.5 text-right font-semibold text-white">
+                      <td className="py-2.5 text-right font-semibold text-text-primary">
                         ₹{stock.price ? stock.price.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "–"}
                       </td>
                       <td className={`py-2.5 text-right font-bold ${
-                        type === "active" ? "text-gray-300" : isGain ? "text-emerald-400" : "text-rose-400"
+                        type === "active" ? "text-text-secondary" : isGain ? "text-positive" : "text-negative"
                       }`}>
                         {type === "active" ? (
                           <span>{(stock.volume / 1000000).toFixed(2)}M</span>
@@ -125,9 +127,9 @@ const StockTable = ({ title, data, type }: { title: string; data: any[]; type: "
                           <span className="inline-flex items-center">
                             {isGain ? "+" : ""}{stock.change_pct.toFixed(2)}%
                             {isGain ? (
-                              <ArrowUpRight className="w-3 h-3 ml-0.5 text-emerald-400" />
+                              <ArrowUpRight className="w-3 h-3 ml-0.5 text-positive" />
                             ) : (
-                              <ArrowDownRight className="w-3 h-3 ml-0.5 text-rose-400" />
+                              <ArrowDownRight className="w-3 h-3 ml-0.5 text-negative" />
                             )}
                           </span>
                         )}
@@ -145,6 +147,7 @@ const StockTable = ({ title, data, type }: { title: string; data: any[]; type: "
 };
 
 export default function MarketOverviewPage() {
+  const { theme } = useTheme();
   const [pulse, setPulse] = useState<MarketPulseData | null>(null);
   const [pulseCreatedAt, setPulseCreatedAt] = useState<Date | null>(null);
   const [indices, setIndices] = useState<IndexQuote[]>([]);
@@ -296,7 +299,10 @@ export default function MarketOverviewPage() {
     <div className="p-6 space-y-6 flex-1">
       {/* ── Global Ticker Tape ────────────────────────── */}
       {tapeData && tapeData.length > 0 && (
-        <div className="w-full bg-[#0a0d1a]/80 border border-white/[0.04] rounded-2xl overflow-hidden py-2.5 px-4 relative flex items-center shadow-lg backdrop-blur-md">
+        <div
+          className="w-full rounded-2xl overflow-hidden py-2.5 px-4 relative flex items-center shadow-lg backdrop-blur-md"
+          style={{ background: "var(--tape-bg)", border: "1px solid var(--tape-border)" }}
+        >
           <style>{`
             @keyframes marquee {
               0% { transform: translateX(0%); }
@@ -317,11 +323,11 @@ export default function MarketOverviewPage() {
                 const up = (item.change_pct ?? 0) >= 0;
                 return (
                   <div key={idx} className="inline-flex items-center space-x-2 text-xs font-mono select-none">
-                    <span className="text-gray-400 font-semibold uppercase">{item.label}</span>
-                    <span className="text-white font-bold">
+                    <span className="text-text-muted font-semibold uppercase">{item.label}</span>
+                    <span className="text-text-primary font-bold">
                       {item.label.includes("USD") ? `₹${item.price?.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price?.toFixed(2)}` : item.price?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
                     </span>
-                    <span className={`inline-flex items-center font-bold ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                    <span className={`inline-flex items-center font-bold ${up ? "text-positive" : "text-negative"}`}>
                       {up ? "+" : ""}{item.change_pct?.toFixed(2)}%
                       {up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />}
                     </span>
@@ -334,11 +340,11 @@ export default function MarketOverviewPage() {
                 const up = (item.change_pct ?? 0) >= 0;
                 return (
                   <div key={`dup-${idx}`} className="inline-flex items-center space-x-2 text-xs font-mono select-none">
-                    <span className="text-gray-400 font-semibold uppercase">{item.label}</span>
-                    <span className="text-white font-bold">
+                    <span className="text-text-muted font-semibold uppercase">{item.label}</span>
+                    <span className="text-text-primary font-bold">
                       {item.label.includes("USD") ? `₹${item.price?.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price?.toFixed(2)}` : item.price?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
                     </span>
-                    <span className={`inline-flex items-center font-bold ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                    <span className={`inline-flex items-center font-bold ${up ? "text-positive" : "text-negative"}`}>
                       {up ? "+" : ""}{item.change_pct?.toFixed(2)}%
                       {up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />}
                     </span>
@@ -353,14 +359,14 @@ export default function MarketOverviewPage() {
       {/* ── Page Header ─────────────────────────────── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Market Overview</h2>
-          <p className="text-sm text-gray-500 font-mono">INDIAN EQUITY HEALTH & LIVE MARKET DATA</p>
+          <h2 className="text-2xl font-bold tracking-tight text-text-primary">Market Overview</h2>
+          <p className="text-sm text-text-muted font-mono">INDIAN EQUITY HEALTH & LIVE MARKET DATA</p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Market status pill */}
           {mktStatus && (
-            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-mono font-semibold ${mktStatus.bg} ${mktStatus.color}`}>
+            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border border-border-primary text-xs font-mono font-semibold ${mktStatus.bg} ${mktStatus.color}`}>
               <span className={`relative flex h-2 w-2`}>
                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${mktStatus.dot} opacity-75`} />
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${mktStatus.dot}`} />
@@ -371,17 +377,20 @@ export default function MarketOverviewPage() {
 
           {/* Last updated */}
           {lastUpdated && mounted && (
-            <div className="flex items-center space-x-1.5 text-[10px] font-mono text-gray-500">
+            <div className="flex items-center space-x-1.5 text-[10px] font-mono text-text-muted">
               <Clock className="w-3 h-3" />
               <span>Updated {lastUpdated.toLocaleTimeString("en-IN")}</span>
             </div>
           )}
 
+          {/* Theme switcher */}
+          <ThemeSwitcher />
+
           {/* Refresh button */}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 hover:border-blue-500/40 text-blue-400 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-2 px-4 py-2 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 hover:border-accent-primary/40 text-accent-primary rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
@@ -393,7 +402,7 @@ export default function MarketOverviewPage() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {indicesLoading
           ? [1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-20 bg-white/[0.03] border border-white/[0.05] rounded-2xl animate-pulse" />
+              <div key={i} className="h-20 bg-bg-tertiary border border-border-primary rounded-2xl animate-pulse" />
             ))
           : indices.map((idx) => {
               const up = (idx.change_pct ?? 0) >= 0;
@@ -402,28 +411,28 @@ export default function MarketOverviewPage() {
                   key={idx.symbol}
                   className={`flex flex-col justify-between p-4 rounded-2xl border transition-all duration-300 ${
                     up
-                      ? "bg-emerald-500/5 border-emerald-500/15 hover:border-emerald-500/30"
-                      : "bg-rose-500/5 border-rose-500/15 hover:border-rose-500/30"
+                      ? "bg-positive-bg border-positive/10 hover:border-positive/25"
+                      : "bg-negative-bg border-negative/10 hover:border-negative/25"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">{idx.label}</span>
+                    <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">{idx.label}</span>
                     {up ? (
-                      <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+                      <ArrowUpRight className="w-3.5 h-3.5 text-positive" />
                     ) : (
-                      <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />
+                      <ArrowDownRight className="w-3.5 h-3.5 text-negative" />
                     )}
                   </div>
                   <div>
-                    <div className="text-lg font-mono font-bold text-white">
+                    <div className="text-lg font-mono font-bold text-text-primary">
                       {idx.price ? idx.price.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "–"}
                     </div>
-                    <div className={`text-xs font-mono font-semibold mt-0.5 ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                    <div className={`text-xs font-mono font-semibold mt-0.5 ${up ? "text-positive" : "text-negative"}`}>
                       {idx.change_pct !== null
                         ? `${up ? "+" : ""}${idx.change_pct.toFixed(2)}%`
                         : "–"}
                       {idx.change !== null ? (
-                        <span className="text-gray-500 font-normal ml-1.5">
+                        <span className="text-text-muted font-normal ml-1.5 opacity-80">
                           ({up ? "+" : ""}
                           {idx.change.toFixed(2)})
                         </span>
@@ -459,17 +468,17 @@ export default function MarketOverviewPage() {
         {/* AI Market Pulse panel */}
         <div className="lg:col-span-5 space-y-4">
           <div className="glass-panel p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-4">
+            <div className="flex items-center justify-between border-b border-border-primary pb-4">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-600/15 flex items-center justify-center">
-                  <Globe className="w-4 h-4 text-blue-400" />
+                <div className="w-8 h-8 rounded-lg bg-accent-primary/15 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-accent-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Market Pulse</h3>
+                  <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">AI Market Pulse</h3>
                   <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-500 font-mono">GEMINI GENERATIVE SYNTHESIS</p>
+                    <p className="text-[10px] text-text-muted font-mono">GEMINI GENERATIVE SYNTHESIS</p>
                     {pulseCreatedAt && (
-                      <span className="text-[8px] text-gray-600 font-mono">
+                      <span className="text-[8px] text-text-muted font-mono">
                         Synced {pulseCreatedAt.toLocaleTimeString("en-IN")}
                       </span>
                     )}
@@ -481,7 +490,7 @@ export default function MarketOverviewPage() {
                 <button
                   onClick={handleRegeneratePulse}
                   disabled={regeneratingPulse}
-                  className="flex items-center space-x-1 px-2 py-1 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 text-blue-400 rounded-lg text-[9px] font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50"
+                  className="flex items-center space-x-1 px-2 py-1 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg text-[9px] font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw className={`w-2.5 h-2.5 ${regeneratingPulse ? "animate-spin" : ""}`} />
                   <span>{regeneratingPulse ? "Analyzing..." : "Analyze Live"}</span>
@@ -491,10 +500,10 @@ export default function MarketOverviewPage() {
                   <div
                     className={`flex items-center font-mono font-bold text-[10px] px-2 py-1 rounded-full border ${
                       pulse.market_condition === "BULLISH"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        ? "bg-positive-bg text-positive border-positive/20"
                         : pulse.market_condition === "BEARISH"
-                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                        : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                        ? "bg-negative-bg text-negative border-negative/20"
+                        : "bg-neutral-bg text-neutral border-neutral/20"
                     }`}
                   >
                     {pulse.market_condition === "BULLISH" ? (
@@ -511,49 +520,49 @@ export default function MarketOverviewPage() {
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center space-y-3">
                 <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs text-gray-500 font-mono">Analyzing Market Metrics...</span>
+                <span className="text-xs text-text-muted font-mono">Analyzing Market Metrics...</span>
               </div>
             ) : pulse ? (
               <div className="space-y-5">
-                <p className="text-xs text-slate-300 leading-relaxed font-sans">{pulse.pulse_summary}</p>
+                <p className="text-xs text-text-secondary leading-relaxed font-sans">{pulse.pulse_summary}</p>
 
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center font-mono">
-                    <Layers className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
+                  <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center font-mono">
+                    <Layers className="w-3.5 h-3.5 mr-1.5 text-accent-primary" />
                     Sector Outlook
                   </h4>
                   <div className="space-y-2">
                     {pulse.top_sectors.map((sec) => (
-                      <div key={sec.sector} className="bg-black/20 rounded-xl p-3 border border-white/[0.02]">
-                        <div className="flex justify-between items-center text-xs font-bold text-white mb-1">
+                      <div key={sec.sector} className="bg-bg-tertiary rounded-xl p-3 border border-border-primary">
+                        <div className="flex justify-between items-center text-xs font-bold text-text-primary mb-1">
                           <span>{sec.sector}</span>
                           <span
                             className={`text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded-md ${
                               sec.performance === "Strong"
-                                ? "bg-emerald-500/10 text-emerald-400"
+                                ? "bg-positive-bg text-positive"
                                 : sec.performance === "Weak"
-                                ? "bg-rose-500/10 text-rose-400"
-                                : "bg-slate-500/10 text-slate-400"
+                                ? "bg-negative-bg text-negative"
+                                : "bg-neutral-bg text-neutral"
                             }`}
                           >
                             {sec.performance}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-400 leading-relaxed font-sans">{sec.outlook}</p>
+                        <p className="text-[11px] text-text-secondary leading-relaxed font-sans">{sec.outlook}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center font-mono">
-                    <Cpu className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
+                  <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center font-mono">
+                    <Cpu className="w-3.5 h-3.5 mr-1.5 text-accent-primary" />
                     Key Market Drivers
                   </h4>
                   <ul className="space-y-1.5">
                     {pulse.market_drivers.map((driver, idx) => (
-                      <li key={idx} className="flex items-start text-xs text-slate-300 leading-relaxed">
-                        <span className="text-blue-500 font-bold font-mono mr-2">{idx + 1}.</span>
+                      <li key={idx} className="flex items-start text-xs text-text-secondary leading-relaxed">
+                        <span className="text-accent-primary font-bold font-mono mr-2">{idx + 1}.</span>
                         <span>{driver}</span>
                       </li>
                     ))}
@@ -562,14 +571,14 @@ export default function MarketOverviewPage() {
 
                 {pulse.macro_trends && pulse.macro_trends.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center font-mono">
-                      <BarChart2 className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
+                    <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center font-mono">
+                      <BarChart2 className="w-3.5 h-3.5 mr-1.5 text-accent-primary" />
                       Macro Trends
                     </h4>
                     <ul className="space-y-1.5">
                       {pulse.macro_trends.map((t, i) => (
-                        <li key={i} className="flex items-start text-xs text-slate-400 leading-relaxed">
-                          <span className="text-gray-600 font-mono mr-2">→</span>
+                        <li key={i} className="flex items-start text-xs text-text-secondary leading-relaxed">
+                          <span className="text-text-muted font-mono mr-2">→</span>
                           <span>{t}</span>
                         </li>
                       ))}
@@ -581,24 +590,24 @@ export default function MarketOverviewPage() {
           </div>
 
           {/* Live status card */}
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[10px] font-mono">
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-bg-secondary border border-border-primary text-[10px] font-mono">
             <div className="flex items-center space-x-2">
               {online ? (
                 <>
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-positive opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-positive" />
                   </span>
-                  <span className="text-emerald-500">Live · Auto-refresh 10s</span>
+                  <span className="text-positive font-semibold">Live · Auto-refresh 10s</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="w-3 h-3 text-red-400" />
-                  <span className="text-red-400">Offline</span>
+                  <WifiOff className="w-3 h-3 text-negative" />
+                  <span className="text-negative font-semibold">Offline</span>
                 </>
               )}
             </div>
-            <span className="text-gray-600">Yahoo Finance API · NSE/BSE</span>
+            <span className="text-text-muted">Yahoo Finance API · NSE/BSE</span>
           </div>
         </div>
       </div>

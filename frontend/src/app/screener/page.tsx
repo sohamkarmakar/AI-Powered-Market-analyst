@@ -96,7 +96,7 @@ function fmtPct(n: number | null | undefined): string {
 // ─────────────────────────────────────────────────────────
 
 function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
-  if (!data || data.length < 2) return <div className="w-24 h-8 opacity-30 text-gray-600 text-[10px] flex items-center">No data</div>;
+  if (!data || data.length < 2) return <div className="w-24 h-8 opacity-30 text-text-muted text-[10px] flex items-center">No data</div>;
   const min = Math.min(...data), max = Math.max(...data);
   const range = max - min || 1;
   const w = 96, h = 32, pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 4) - 2}`).join(" ");
@@ -140,30 +140,30 @@ function DetailPanel({ quote, intraday, onClose }: { quote: Quote; intraday: Int
   const yearRange = quote.year_high && quote.year_low ? (((quote.price ?? quote.year_low) - quote.year_low) / (quote.year_high - quote.year_low)) * 100 : null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[420px] bg-[#080d1a] border-l border-[rgba(255,255,255,0.06)] z-50 flex flex-col shadow-2xl shadow-black/60 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 w-[420px] bg-bg-elevated border-l border-border-primary z-50 flex flex-col shadow-2xl shadow-black/40 overflow-y-auto">
       {/* Header */}
-      <div className={`p-5 border-b border-[rgba(255,255,255,0.06)] ${isUp ? "bg-emerald-500/5" : "bg-rose-500/5"}`}>
+      <div className={`p-5 border-b border-border-primary ${isUp ? "bg-positive-bg" : "bg-negative-bg"}`}>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-mono font-bold text-xl text-white">{normBase(quote.symbol)}</span>
-              <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">{quote.sector !== "N/A" ? quote.sector : "NSE"}</span>
+              <span className="font-mono font-bold text-xl text-text-primary">{normBase(quote.symbol)}</span>
+              <span className="text-[10px] bg-bg-tertiary text-text-secondary px-1.5 py-0.5 rounded font-mono">{quote.sector !== "N/A" ? quote.sector : "NSE"}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5 max-w-[280px] line-clamp-1">{quote.name}</p>
+            <p className="text-xs text-text-secondary mt-0.5 max-w-[280px] line-clamp-1">{quote.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors cursor-pointer">
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="mt-4">
-          <div className={`text-3xl font-mono font-bold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+          <div className={`text-3xl font-mono font-bold ${isUp ? "text-positive" : "text-negative"}`}>
             {quote.price ? `₹${fmt(quote.price)}` : "–"}
           </div>
-          <div className={`flex items-center space-x-2 mt-1 text-sm font-mono ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+          <div className={`flex items-center space-x-2 mt-1 text-sm font-mono ${isUp ? "text-positive" : "text-negative"}`}>
             {isUp ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
             <span>{quote.change ? `${isUp ? "+" : ""}₹${fmt(Math.abs(quote.change))}` : "–"}</span>
-            <span className="text-gray-500">|</span>
+            <span className="text-text-muted">|</span>
             <span>{fmtPct(quote.change_pct)}</span>
           </div>
         </div>
@@ -173,7 +173,7 @@ function DetailPanel({ quote, intraday, onClose }: { quote: Quote; intraday: Int
       {closes.length > 2 && (
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Intraday (5-min)</span>
+            <span className="text-[10px] font-mono text-text-muted uppercase tracking-widest">Intraday (5-min)</span>
           </div>
           <div className="w-full h-16 flex items-center">
             <svg width="100%" height="64" viewBox={`0 0 ${closes.length} 64`} preserveAspectRatio="none">
@@ -200,48 +200,48 @@ function DetailPanel({ quote, intraday, onClose }: { quote: Quote; intraday: Int
       )}
 
       {/* OHLC + Range */}
-      <div className="px-5 py-3 grid grid-cols-2 gap-3 border-y border-[rgba(255,255,255,0.04)]">
+      <div className="px-5 py-3 grid grid-cols-2 gap-3 border-y border-border-primary">
         {[
           { label: "Open",       value: quote.open      ? `₹${fmt(quote.open)}` : "–" },
           { label: "Prev Close", value: quote.prev_close ? `₹${fmt(quote.prev_close)}` : "–" },
-          { label: "Day High",   value: quote.day_high  ? `₹${fmt(quote.day_high)}` : "–", color: "text-emerald-400" },
-          { label: "Day Low",    value: quote.day_low   ? `₹${fmt(quote.day_low)}` : "–",  color: "text-rose-400" },
-          { label: "52W High",   value: quote.year_high ? `₹${fmt(quote.year_high)}` : "–", color: "text-emerald-400/70" },
-          { label: "52W Low",    value: quote.year_low  ? `₹${fmt(quote.year_low)}` : "–",  color: "text-rose-400/70" },
+          { label: "Day High",   value: quote.day_high  ? `₹${fmt(quote.day_high)}` : "–", color: "text-positive" },
+          { label: "Day Low",    value: quote.day_low   ? `₹${fmt(quote.day_low)}` : "–",  color: "text-negative" },
+          { label: "52W High",   value: quote.year_high ? `₹${fmt(quote.year_high)}` : "–", color: "text-positive opacity-70" },
+          { label: "52W Low",    value: quote.year_low  ? `₹${fmt(quote.year_low)}` : "–",  color: "text-negative opacity-70" },
           { label: "Volume",     value: fmtVol(quote.volume) },
           { label: "Avg Vol",    value: fmtVol(quote.avg_volume) },
           { label: "Market Cap", value: fmtCr(quote.market_cap) },
         ].map(item => (
           <div key={item.label}>
-            <p className="text-[10px] text-gray-500 font-mono">{item.label}</p>
-            <p className={`text-xs font-mono font-semibold mt-0.5 ${(item as any).color || "text-white"}`}>{item.value}</p>
+            <p className="text-[10px] text-text-muted font-mono">{item.label}</p>
+            <p className={`text-xs font-mono font-semibold mt-0.5 ${(item as any).color || "text-text-primary"}`}>{item.value}</p>
           </div>
         ))}
       </div>
 
       {/* Range bars */}
-      <div className="px-5 py-3 space-y-3 border-b border-[rgba(255,255,255,0.04)]">
+      <div className="px-5 py-3 space-y-3 border-b border-border-primary">
         {dayRange !== null && (
           <div>
-            <div className="flex justify-between text-[10px] font-mono text-gray-500 mb-1">
+            <div className="flex justify-between text-[10px] font-mono text-text-muted mb-1">
               <span>Day Range</span>
               <span>{quote.day_low ? `₹${fmt(quote.day_low)}` : ""} – {quote.day_high ? `₹${fmt(quote.day_high)}` : ""}</span>
             </div>
-            <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div className="relative h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-500 to-emerald-500 rounded-full" style={{ width: "100%" }} />
-              <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md border border-black/20" style={{ left: `calc(${Math.min(Math.max(dayRange, 0), 100)}% - 5px)` }} />
+              <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-text-primary rounded-full shadow-md border border-border-primary" style={{ left: `calc(${Math.min(Math.max(dayRange, 0), 100)}% - 5px)` }} />
             </div>
           </div>
         )}
         {yearRange !== null && (
           <div>
-            <div className="flex justify-between text-[10px] font-mono text-gray-500 mb-1">
+            <div className="flex justify-between text-[10px] font-mono text-text-muted mb-1">
               <span>52W Range</span>
               <span>{quote.year_low ? `₹${fmt(quote.year_low)}` : ""} – {quote.year_high ? `₹${fmt(quote.year_high)}` : ""}</span>
             </div>
-            <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div className="relative h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-500/60 to-emerald-500/60 rounded-full" style={{ width: "100%" }} />
-              <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md border border-black/20" style={{ left: `calc(${Math.min(Math.max(yearRange, 0), 100)}% - 5px)` }} />
+              <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-text-primary rounded-full shadow-md border border-border-primary" style={{ left: `calc(${Math.min(Math.max(yearRange, 0), 100)}% - 5px)` }} />
             </div>
           </div>
         )}
@@ -249,12 +249,12 @@ function DetailPanel({ quote, intraday, onClose }: { quote: Quote; intraday: Int
 
       {/* Fundamentals */}
       <div className="px-5 py-3">
-        <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-3">Fundamentals</p>
+        <p className="text-[10px] font-mono text-text-muted uppercase tracking-widest mb-3">Fundamentals</p>
         <div className="grid grid-cols-2 gap-2">
           {fundamentals.map(f => (
-            <div key={f.label} className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-2">
-              <p className="text-[10px] text-gray-500 font-mono">{f.label}</p>
-              <p className="text-xs font-mono font-semibold text-white mt-0.5">{f.value}</p>
+            <div key={f.label} className="bg-bg-tertiary border border-border-primary rounded-lg p-2">
+              <p className="text-[10px] text-text-muted font-mono">{f.label}</p>
+              <p className="text-xs font-mono font-semibold text-text-primary mt-0.5">{f.value}</p>
             </div>
           ))}
         </div>
@@ -264,7 +264,7 @@ function DetailPanel({ quote, intraday, onClose }: { quote: Quote; intraday: Int
       <div className="px-5 pb-5 pt-2 mt-auto">
         <Link
           href={`/ticker/${normBase(quote.symbol)}`}
-          className="w-full flex items-center justify-center space-x-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 shadow-lg shadow-blue-500/20"
+          className="w-full flex items-center justify-center space-x-2 py-2.5 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 shadow-lg shadow-accent-primary/20"
         >
           <Activity className="w-3.5 h-3.5" />
           <span>Full Analysis Terminal</span>
@@ -319,17 +319,17 @@ function EditPanel({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="relative w-[420px] max-h-[80vh] bg-[#080d1a] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-[420px] max-h-[80vh] bg-bg-elevated border border-border-primary rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-primary">
           <div className="flex items-center space-x-2">
-            <Pencil className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-white">Edit Watchlist</h3>
-            <span className="text-[10px] font-mono text-gray-500">{localList.length} stocks</span>
+            <Pencil className="w-4 h-4 text-accent-primary" />
+            <h3 className="text-sm font-bold text-text-primary">Edit Watchlist</h3>
+            <span className="text-[10px] font-mono text-text-muted">{localList.length} stocks</span>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white cursor-pointer transition-colors"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary cursor-pointer transition-colors"><X className="w-4 h-4" /></button>
         </div>
 
         {/* Instructions */}
@@ -341,7 +341,7 @@ function EditPanel({
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
           {localList.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-xs font-mono text-gray-600">Watchlist is empty. Add stocks from the search bar.</p>
+              <p className="text-xs font-mono text-text-muted">Watchlist is empty. Add stocks from the search bar.</p>
             </div>
           ) : localList.map((sym, idx) => (
             <div
@@ -353,15 +353,15 @@ function EditPanel({
               onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
               className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl border transition-all cursor-grab active:cursor-grabbing ${
                 overIdx === idx && dragIdx !== idx
-                  ? "border-blue-500/40 bg-blue-500/10"
-                  : "border-white/[0.04] bg-white/[0.02] hover:border-white/10"
+                  ? "border-accent-primary/40 bg-accent-primary/10"
+                  : "border-border-primary bg-bg-tertiary hover:border-border-subtle"
               }`}
             >
-              <GripVertical className="w-4 h-4 text-gray-600 shrink-0" />
-              <span className="flex-1 text-xs font-mono font-bold text-white">{sym}</span>
+              <GripVertical className="w-4 h-4 text-text-muted shrink-0" />
+              <span className="flex-1 text-xs font-mono font-bold text-text-primary">{sym}</span>
               <button
                 onClick={() => removeItem(idx)}
-                className="p-1 text-gray-600 hover:text-rose-400 transition-colors cursor-pointer rounded"
+                className="p-1 text-text-muted hover:text-negative transition-colors cursor-pointer rounded"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -370,21 +370,21 @@ function EditPanel({
         </div>
 
         {/* Footer actions */}
-        <div className="px-5 py-4 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-t border-border-primary flex items-center justify-between gap-3">
           <button
             onClick={() => setLocalList([])}
-            className="flex items-center space-x-1.5 text-[11px] font-mono text-rose-400 hover:text-rose-300 cursor-pointer transition-colors"
+            className="flex items-center space-x-1.5 text-[11px] font-mono text-negative hover:text-negative/80 cursor-pointer transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear All</span>
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-xs font-mono text-gray-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl cursor-pointer transition-all">
+            <button onClick={onClose} className="px-4 py-2 text-xs font-mono text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-elevated border border-border-primary rounded-xl cursor-pointer transition-all">
               Cancel
             </button>
             <button
               onClick={() => { onSave(localList); onClose(); }}
-              className="flex items-center space-x-1.5 px-4 py-2 text-xs font-mono text-white bg-blue-600 hover:bg-blue-500 rounded-xl cursor-pointer transition-all shadow-lg shadow-blue-500/20"
+              className="flex items-center space-x-1.5 px-4 py-2 text-xs font-mono text-white bg-accent-primary hover:bg-accent-primary/90 rounded-xl cursor-pointer transition-all shadow-lg shadow-accent-primary/20"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Apply Changes</span>
@@ -616,12 +616,12 @@ export default function WatchlistPage() {
 
   const SortIcon = ({ field }: { field: SortField }) =>
     sortField === field
-      ? sortDir === "asc" ? <ChevronUp className="w-3 h-3 ml-0.5 text-blue-400" /> : <ChevronDown className="w-3 h-3 ml-0.5 text-blue-400" />
-      : <ChevronUp className="w-3 h-3 ml-0.5 text-gray-600 opacity-0 group-hover:opacity-100" />;
+      ? sortDir === "asc" ? <ChevronUp className="w-3 h-3 ml-0.5 text-accent-primary" /> : <ChevronDown className="w-3 h-3 ml-0.5 text-accent-primary" />
+      : <ChevronUp className="w-3 h-3 ml-0.5 text-text-muted opacity-0 group-hover:opacity-100" />;
 
   const ColHeader = ({ label, field, className = "" }: { label: string; field: SortField; className?: string }) => (
     <th
-      className={`px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer select-none group ${className}`}
+      className={`px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer select-none group ${className}`}
       onClick={() => requestSort(field)}
     >
       <div className="flex items-center font-mono">
@@ -652,19 +652,19 @@ export default function WatchlistPage() {
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden">
       {/* ── Indices Strip ────────────────────────────────── */}
-      <div className="flex items-center space-x-1 px-4 py-2 border-b border-[rgba(255,255,255,0.05)] bg-[#050810] overflow-x-auto shrink-0">
+      <div className="flex items-center space-x-1 px-4 py-2 border-b border-border-primary bg-bg-primary overflow-x-auto shrink-0">
         <span className={`text-[9px] font-bold font-mono px-2 py-1 rounded ${mktStatus.bg} ${mktStatus.color} mr-2 shrink-0 uppercase tracking-widest`}>
           {mktStatus.label}
         </span>
         {indices.length === 0
-          ? [1, 2, 3, 4].map(i => <div key={i} className="h-7 w-28 bg-white/5 rounded animate-pulse shrink-0" />)
+          ? [1, 2, 3, 4].map(i => <div key={i} className="h-7 w-28 bg-bg-tertiary rounded animate-pulse shrink-0" />)
           : indices.map(idx => {
               const up = (idx.change_pct ?? 0) >= 0;
               return (
-                <div key={idx.symbol} className="flex items-center space-x-3 px-3 py-1 rounded-lg bg-white/[0.02] border border-white/[0.04] shrink-0">
-                  <span className="text-[10px] font-mono text-gray-400">{idx.label}</span>
-                  <span className="text-[11px] font-mono font-bold text-white">{idx.price ? idx.price.toLocaleString("en-IN") : "–"}</span>
-                  <span className={`text-[10px] font-mono font-semibold ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                <div key={idx.symbol} className="flex items-center space-x-3 px-3 py-1 rounded-lg bg-bg-secondary border border-border-primary shrink-0">
+                  <span className="text-[10px] font-mono text-text-secondary">{idx.label}</span>
+                  <span className="text-[11px] font-mono font-bold text-text-primary">{idx.price ? idx.price.toLocaleString("en-IN") : "–"}</span>
+                  <span className={`text-[10px] font-mono font-semibold ${up ? "text-positive" : "text-negative"}`}>
                     {up ? "▲" : "▼"} {Math.abs(idx.change_pct ?? 0).toFixed(2)}%
                   </span>
                 </div>
@@ -674,9 +674,9 @@ export default function WatchlistPage() {
         <div className="ml-auto flex items-center space-x-2 shrink-0">
           {online
             ? <><span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" /></span><span className="text-[9px] font-mono text-emerald-500">LIVE · 10s</span></>
-            : <><WifiOff className="w-3 h-3 text-red-400" /><span className="text-[9px] font-mono text-red-400">OFFLINE</span></>
+            : <><WifiOff className="w-3 h-3 text-negative" /><span className="text-[9px] font-mono text-negative">OFFLINE</span></>
           }
-          {lastUpdated && <span className="text-[9px] font-mono text-gray-600">{lastUpdated.toLocaleTimeString("en-IN")}</span>}
+          {lastUpdated && <span className="text-[9px] font-mono text-text-muted">{lastUpdated.toLocaleTimeString("en-IN")}</span>}
         </div>
       </div>
 
@@ -685,20 +685,20 @@ export default function WatchlistPage() {
         <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${selectedSymbol ? "mr-[420px]" : ""}`}>
 
           {/* ── Toolbar ─────────────────────────────────── */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-[rgba(255,255,255,0.05)] shrink-0 bg-[#060b18]/80 backdrop-blur-sm">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border-primary shrink-0 bg-bg-primary/80 backdrop-blur-sm">
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Watchlist</h2>
-              <p className="text-[10px] font-mono text-gray-600">{watchlist.length} STOCKS · LIVE NSE DATA</p>
+              <h2 className="text-base font-bold text-text-primary tracking-tight">Watchlist</h2>
+              <p className="text-[10px] font-mono text-text-muted">{watchlist.length} STOCKS · LIVE NSE DATA</p>
             </div>
 
             <div className="flex-1 max-w-xs">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-500" />
+                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-text-muted" />
                 <input
                   value={filter}
                   onChange={e => setFilter(e.target.value)}
                   placeholder="Filter watchlist..."
-                  className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-xs text-white placeholder-gray-600 font-mono focus:outline-none focus:border-blue-500/50"
+                  className="w-full pl-9 pr-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-xs text-text-primary placeholder-text-muted font-mono focus:outline-none focus:border-accent-primary/50"
                 />
               </div>
             </div>
@@ -706,7 +706,7 @@ export default function WatchlistPage() {
             <select
               value={sectorFilter}
               onChange={e => setSectorFilter(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none cursor-pointer"
+              className="bg-bg-tertiary border border-border-primary rounded-lg px-3 py-2 text-xs text-text-primary font-mono focus:outline-none cursor-pointer"
             >
               {availableSectors.map(s => <option key={s} value={s}>{s === "ALL" ? "All Sectors" : s}</option>)}
             </select>
@@ -721,7 +721,7 @@ export default function WatchlistPage() {
 
             <button
               onClick={() => setEditMode(true)}
-              className="flex items-center space-x-1.5 p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/30 text-gray-400 hover:text-amber-400 transition-all cursor-pointer"
+              className="flex items-center space-x-1.5 p-2 rounded-lg bg-bg-tertiary border border-border-primary hover:bg-amber-500/10 hover:border-amber-500/30 text-text-muted hover:text-amber-400 transition-all cursor-pointer"
               title="Edit watchlist"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -729,7 +729,7 @@ export default function WatchlistPage() {
 
             <button
               onClick={manualRefresh}
-              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] text-gray-400 hover:text-white transition-all cursor-pointer"
+              className="p-2 rounded-lg bg-bg-tertiary border border-border-primary hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-all cursor-pointer"
               title="Refresh"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -760,11 +760,11 @@ export default function WatchlistPage() {
                   <div className="absolute inset-0 border-2 border-blue-500/30 rounded-full" />
                   <div className="absolute inset-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 </div>
-                <p className="text-xs font-mono text-gray-500">Fetching live quotes from NSE…</p>
+                <p className="text-xs font-mono text-text-muted">Fetching live quotes from NSE…</p>
               </div>
             ) : (
               <table className="w-full text-left border-collapse min-w-[1100px]">
-                <thead className="sticky top-0 z-10 bg-[#060b18] border-b border-[rgba(255,255,255,0.06)]">
+                <thead className="sticky top-0 z-10 bg-bg-primary border-b border-border-primary">
                   <tr>
                     <th className="px-3 py-3 w-8"></th>
                     <ColHeader label="Symbol"   field="symbol"     className="min-w-[100px]" />
@@ -788,8 +788,8 @@ export default function WatchlistPage() {
                   {rows.length === 0 ? (
                     <tr><td colSpan={16} className="py-20 text-center">
                       <div className="flex flex-col items-center space-y-3">
-                        <Layers className="w-8 h-8 text-gray-700" />
-                        <p className="text-xs font-mono text-gray-600">No stocks match your filter</p>
+                        <Layers className="w-8 h-8 text-text-muted" />
+                        <p className="text-xs font-mono text-text-muted">No stocks match your filter</p>
                       </div>
                     </td></tr>
                   ) : rows.map(({ sym, q }) => {
@@ -804,84 +804,84 @@ export default function WatchlistPage() {
                       <tr
                         key={sym}
                         onClick={() => setSelectedSymbol(isSelected ? null : sym)}
-                        className={`border-b border-[rgba(255,255,255,0.03)] cursor-pointer transition-colors hover:bg-white/[0.025] ${flash === "up" ? "row-flash-up" : flash === "down" ? "row-flash-down" : ""} ${isSelected ? "row-selected" : ""}`}
+                        className={`border-b border-border-primary cursor-pointer transition-colors hover:bg-bg-tertiary ${flash === "up" ? "row-flash-up" : flash === "down" ? "row-flash-down" : ""} ${isSelected ? "row-selected" : ""}`}
                       >
                         {/* Star */}
                         <td className="px-3 py-2.5 text-center">
-                          <Star className={`w-3 h-3 ${isSelected ? "text-yellow-400 fill-yellow-400" : "text-gray-700"}`} />
+                          <Star className={`w-3 h-3 ${isSelected ? "text-yellow-400 fill-yellow-400" : "text-text-muted"}`} />
                         </td>
 
                         {/* Symbol + Name */}
                         <td className="px-3 py-2.5">
                           <div className="flex flex-col">
-                            <span className="text-xs font-mono font-bold text-white">{sym}</span>
-                            <span className="text-[10px] text-gray-500 max-w-[130px] truncate">{q?.name || "–"}</span>
+                            <span className="text-xs font-mono font-bold text-text-primary">{sym}</span>
+                            <span className="text-[10px] text-text-muted max-w-[130px] truncate">{q?.name || "–"}</span>
                           </div>
                         </td>
 
                         {/* LTP */}
                         <td className="px-3 py-2.5 text-right">
-                          {isLoading ? <div className="h-4 w-16 bg-white/5 rounded animate-pulse ml-auto" /> :
-                            <span className={`text-sm font-mono font-bold ${isUp ? "text-white" : "text-white"}`}>
+                          {isLoading ? <div className="h-4 w-16 bg-bg-tertiary rounded animate-pulse ml-auto" /> :
+                            <span className="text-sm font-mono font-bold text-text-primary">
                               {q?.price ? `₹${fmt(q.price)}` : "–"}
                             </span>}
                         </td>
 
                         {/* Change */}
-                        <td className={`px-3 py-2.5 text-right text-xs font-mono font-semibold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+                        <td className={`px-3 py-2.5 text-right text-xs font-mono font-semibold ${isUp ? "text-positive" : "text-negative"}`}>
                           {q?.change !== null && q?.change !== undefined ? `${isUp ? "+" : ""}₹${fmt(Math.abs(q.change))}` : "–"}
                         </td>
 
                         {/* Change % */}
                         <td className="px-3 py-2.5 text-right">
-                          <span className={`inline-flex items-center text-xs font-mono font-bold px-1.5 py-0.5 rounded ${isUp ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                          <span className={`inline-flex items-center text-xs font-mono font-bold px-1.5 py-0.5 rounded ${isUp ? "bg-positive-bg text-positive" : "bg-negative-bg text-negative"}`}>
                             {isUp ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
                             {q?.change_pct !== null && q?.change_pct !== undefined ? `${Math.abs(q.change_pct).toFixed(2)}%` : "–"}
                           </span>
                         </td>
 
                         {/* Open */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-gray-400">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-text-secondary">
                           {q?.open ? `₹${fmt(q.open)}` : "–"}
                         </td>
 
                         {/* High */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-emerald-400/80">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-positive opacity-80">
                           {q?.day_high ? `₹${fmt(q.day_high)}` : "–"}
                         </td>
 
                         {/* Low */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-rose-400/80">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-negative opacity-80">
                           {q?.day_low ? `₹${fmt(q.day_low)}` : "–"}
                         </td>
 
                         {/* 52W High */}
-                        <td className="px-3 py-2.5 text-right text-[11px] font-mono text-emerald-400/50">
+                        <td className="px-3 py-2.5 text-right text-[11px] font-mono text-positive opacity-50">
                           {q?.year_high ? `₹${fmt(q.year_high)}` : "–"}
                         </td>
 
                         {/* 52W Low */}
-                        <td className="px-3 py-2.5 text-right text-[11px] font-mono text-rose-400/50">
+                        <td className="px-3 py-2.5 text-right text-[11px] font-mono text-negative opacity-50">
                           {q?.year_low ? `₹${fmt(q.year_low)}` : "–"}
                         </td>
 
                         {/* Volume */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-gray-400">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-text-secondary">
                           {fmtVol(q?.volume)}
                         </td>
 
                         {/* Market Cap */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-gray-300">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-text-primary">
                           {fmtCr(q?.market_cap)}
                         </td>
 
                         {/* P/E */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-gray-400">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-text-secondary">
                           {q?.pe_ratio ? fmt(q.pe_ratio, 1) : "–"}
                         </td>
 
                         {/* Beta */}
-                        <td className="px-3 py-2.5 text-right text-xs font-mono text-gray-500">
+                        <td className="px-3 py-2.5 text-right text-xs font-mono text-text-muted">
                           {q?.beta ? fmt(q.beta) : "–"}
                         </td>
 
@@ -894,7 +894,7 @@ export default function WatchlistPage() {
                         <td className="px-2 py-2.5 text-center">
                           <button
                             onClick={e => { e.stopPropagation(); removeSymbol(sym); }}
-                            className="p-1 text-gray-700 hover:text-rose-400 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 hover:opacity-100 rounded"
+                            className="p-1 text-text-muted hover:text-negative transition-colors cursor-pointer opacity-0 group-hover:opacity-100 hover:opacity-100 rounded"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -908,7 +908,7 @@ export default function WatchlistPage() {
           </div>
 
           {/* ── Footer stats bar ────────────────────────── */}
-          <div className="flex items-center justify-between px-4 py-2 border-t border-[rgba(255,255,255,0.04)] bg-[#060b18] text-[10px] font-mono text-gray-600 shrink-0">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border-primary bg-bg-primary text-[10px] font-mono text-text-muted shrink-0">
             <span>{rows.length} of {watchlist.length} symbols shown</span>
             <span className="flex items-center space-x-1">
               <Clock className="w-3 h-3" />

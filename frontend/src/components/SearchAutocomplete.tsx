@@ -118,42 +118,57 @@ export default function SearchAutocomplete({
           placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setShowDropdown(suggestions.length > 0)}
           onKeyDown={handleKeyDown}
-          className="w-full bg-[#0c1020]/80 border border-[rgba(255,255,255,0.06)] focus:border-blue-500 focus:outline-none rounded-xl pl-4 pr-10 py-2.5 text-xs text-white placeholder-gray-500 font-mono tracking-wide"
+        className="search-input w-full rounded-xl pl-4 pr-10 py-2.5 text-xs font-mono tracking-wide focus:outline-none transition-colors"
+          style={{
+            background: "var(--input-bg)",
+            border: "1px solid var(--input-border)",
+            color: "var(--input-text)",
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = "var(--input-focus-border)"; setShowDropdown(suggestions.length > 0); }}
+          onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; }}
         />
         <div className="absolute right-3.5 flex items-center">
           {loading ? (
-            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+            <Loader2 className="w-4 h-4 text-accent-primary animate-spin" />
           ) : (
-            <Search className="w-4 h-4 text-gray-500" />
+            <Search className="w-4 h-4 text-text-muted" />
           )}
         </div>
       </div>
 
       {/* Floating Suggestions List */}
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 mt-2 z-50 bg-[#0e1227]/95 border border-[rgba(255,255,255,0.08)] rounded-xl shadow-2xl backdrop-blur-xl overflow-hidden max-h-60 overflow-y-auto">
-          <ul className="divide-y divide-white/[0.03]">
+        <div
+          className="absolute left-0 right-0 mt-2 z-50 rounded-xl shadow-2xl backdrop-blur-xl overflow-hidden max-h-60 overflow-y-auto"
+          style={{ background: "var(--dropdown-bg)", border: "1px solid var(--dropdown-border)" }}
+        >
+          <ul className="divide-y" style={{ borderColor: "var(--dropdown-border)" }}>
             {suggestions.map((item, idx) => (
               <li
                 key={item.symbol}
                 onClick={() => handleSelect(item.symbol)}
-                className={`p-3 cursor-pointer flex items-center justify-between text-xs transition-colors duration-150 ${
-                  activeIndex === idx ? "bg-blue-600/30 text-white" : "hover:bg-white/[0.04] text-slate-300"
-                }`}
+                className="p-3 cursor-pointer flex items-center justify-between text-xs transition-colors duration-150"
+                style={{
+                  background: activeIndex === idx ? "var(--dropdown-active)" : "transparent",
+                  color: "var(--text-primary)",
+                }}
+                onMouseEnter={e => { if (activeIndex !== idx) (e.currentTarget as HTMLElement).style.background = "var(--dropdown-hover)"; }}
+                onMouseLeave={e => { if (activeIndex !== idx) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
               >
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono font-bold text-white tracking-wide">{item.symbol}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-slate-500 font-medium">
+                    <span className="font-mono font-bold text-text-primary tracking-wide">{item.symbol}</span>
+                    <span className="text-[9px] uppercase tracking-wider text-text-muted font-medium">
                       {item.exchange}
                     </span>
                   </div>
-                  <div className="text-[10px] text-gray-400 truncate max-w-[240px] mt-0.5">{item.name}</div>
+                  <div className="text-[10px] text-text-secondary truncate max-w-[240px] mt-0.5">{item.name}</div>
                 </div>
-
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-blue-400">
+                <span
+                  className="text-[9px] font-mono px-1.5 py-0.5 rounded"
+                  style={{ background: "var(--bg-tertiary)", color: "var(--accent-primary)" }}
+                >
                   {item.type}
                 </span>
               </li>

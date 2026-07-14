@@ -1,0 +1,86 @@
+/*
+ * tokens.css — single source of truth for ALL color tokens.
+ * Import this in globals.css. Never hardcode hex values in components.
+ */
+
+:root {
+  /* Chart indicator colors */
+  --chart-price-up:        #10b981;
+  --chart-price-down:      #ef4444;
+  --chart-ema20:           #f59e0b;
+  --chart-ema50:           #d946ef;
+  --chart-vwap:            #06b6d4;
+  --chart-volume-fill:     rgba(99, 102, 241, 0.12);
+  --chart-volume-stroke:   rgba(99, 102, 241, 0.30);
+
+  /* Chart container */
+  --chart-bg:              rgba(10, 14, 24, 0.45);
+  --chart-border:          var(--border-primary);
+
+  /* Input / Search field */
+  --input-bg:              rgba(10, 14, 23, 0.80);
+  --input-border:          rgba(255, 255, 255, 0.06);
+  --input-focus-border:    var(--accent-primary);
+  --input-text:            var(--text-primary);
+  --input-placeholder:     var(--text-muted);
+
+  /* Dropdown */
+  --dropdown-bg:           rgba(12, 16, 32, 0.97);
+  --dropdown-border:       rgba(255, 255, 255, 0.08);
+  --dropdown-hover:        rgba(255, 255, 255, 0.04);
+  --dropdown-active:       rgba(59, 130, 246, 0.28);
+
+  /* Ticker Tape */
+  --tape-bg:               rgba(8, 11, 22, 0.85);
+  --tape-border:           rgba(255, 255, 255, 0.04);
+
+  /* Indicator toggle buttons inactive state */
+  --toggle-inactive-text:  var(--text-muted);
+  --toggle-inactive-border: var(--border-subtle);
+}
+
+[data-theme="light"] {
+  /* Chart override: higher-contrast greens/reds for light bg */
+  --chart-price-up:        #16a34a;
+  --chart-price-down:      #dc2626;
+  --chart-bg:              rgba(238, 241, 245, 0.60);
+
+  /* Input */
+  --input-bg:              var(--bg-elevated);
+  --input-border:          rgba(0, 0, 0, 0.09);
+
+  /* Dropdown */
+  --dropdown-bg:           var(--bg-elevated);
+  --dropdown-border:       rgba(0, 0, 0, 0.09);
+  --dropdown-hover:        rgba(0, 0, 0, 0.04);
+  --dropdown-active:       rgba(37, 99, 235, 0.10);
+
+  /* Tape */
+  --tape-bg:               var(--bg-tertiary);
+  --tape-border:           var(--border-primary);
+
+  /* Toggle inactive */
+  --toggle-inactive-text:  var(--text-muted);
+  --toggle-inactive-border: var(--border-primary);
+}
+
+[data-theme="deepblue"] {
+  --chart-price-up:        #2dd4bf;
+  --chart-price-down:      #fb7185;
+  --chart-bg:              rgba(6, 11, 24, 0.50);
+  --chart-border:          rgba(30, 47, 92, 0.4);
+
+  /* Input */
+  --input-bg:              rgba(6, 11, 24, 0.85);
+  --input-border:          rgba(30, 47, 92, 0.50);
+
+  /* Dropdown */
+  --dropdown-bg:           rgba(8, 15, 35, 0.97);
+  --dropdown-border:       rgba(30, 47, 92, 0.60);
+  --dropdown-hover:        rgba(30, 47, 92, 0.30);
+  --dropdown-active:       rgba(79, 139, 255, 0.18);
+
+  /* Tape */
+  --tape-bg:               rgba(6, 11, 24, 0.90);
+  --tape-border:           rgba(30, 47, 92, 0.35);
+}

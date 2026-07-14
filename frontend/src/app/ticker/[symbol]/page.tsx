@@ -38,24 +38,24 @@ const fmtPct = (v: number | null | undefined) =>
 
 function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="bg-white/[0.025] border border-white/[0.05] rounded-xl p-3">
-      <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest mb-1">{label}</p>
-      <p className={`text-sm font-mono font-bold ${color || "text-white"}`}>{value}</p>
-      {sub && <p className="text-[9px] text-gray-600 mt-0.5">{sub}</p>}
+    <div className="bg-bg-tertiary border border-border-primary rounded-xl p-3">
+      <p className="text-[9px] font-mono text-text-muted uppercase tracking-widest mb-1">{label}</p>
+      <p className={`text-sm font-mono font-bold ${color || "text-text-primary"}`}>{value}</p>
+      {sub && <p className="text-[9px] text-text-muted mt-0.5">{sub}</p>}
     </div>
   );
 }
 
 function SectionHeader({ icon: Icon, title, badge }: { icon: any; title: string; badge?: string }) {
   return (
-    <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.05]">
+    <div className="flex items-center justify-between mb-4 pb-3 border-b border-border-primary">
       <div className="flex items-center space-x-2">
-        <div className="w-6 h-6 rounded-lg bg-blue-600/15 flex items-center justify-center">
-          <Icon className="w-3.5 h-3.5 text-blue-400" />
+        <div className="w-6 h-6 rounded-lg bg-accent-primary/15 flex items-center justify-center">
+          <Icon className="w-3.5 h-3.5 text-accent-primary" />
         </div>
-        <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">{title}</h3>
+        <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-mono">{title}</h3>
       </div>
-      {badge && <span className="text-[9px] font-mono text-gray-500 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.05]">{badge}</span>}
+      {badge && <span className="text-[9px] font-mono text-text-muted bg-bg-tertiary px-2 py-0.5 rounded-full border border-border-primary">{badge}</span>}
     </div>
   );
 }
@@ -63,9 +63,9 @@ function SectionHeader({ icon: Icon, title, badge }: { icon: any; title: string;
 function SignalBadge({ signal }: { signal: "BUY" | "SELL" | "NEUTRAL" }) {
   return (
     <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
-      signal === "BUY" ? "bg-emerald-500/15 text-emerald-400" :
-      signal === "SELL" ? "bg-rose-500/15 text-rose-400" :
-      "bg-slate-500/15 text-slate-400"
+      signal === "BUY" ? "bg-positive-bg text-positive" :
+      signal === "SELL" ? "bg-negative-bg text-negative" :
+      "bg-neutral-bg text-neutral"
     }`}>{signal}</span>
   );
 }
@@ -241,7 +241,7 @@ export default function TickerDeepDivePage() {
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden">
       {/* ── Sticky Header ──────────────────────────────────── */}
-      <div className="shrink-0 bg-[#060b18] border-b border-white/[0.05] px-6 pt-5 pb-0">
+      <div className="shrink-0 bg-bg-primary border-b border-border-primary px-6 pt-5 pb-0">
         {/* Search + symbol row */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
           <div>
@@ -249,22 +249,22 @@ export default function TickerDeepDivePage() {
               <div className="h-7 w-48 bg-white/[0.04] rounded animate-pulse" />
             ) : (
               <div className="flex items-center flex-wrap gap-2">
-                <h2 className="text-xl font-mono font-bold text-white tracking-wide">
+                <h2 className="text-xl font-mono font-bold text-text-primary tracking-wide">
                   {tickerInfo?.symbol || symbol}
                 </h2>
                 {tickerInfo?.industry && (
-                  <span className="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-mono uppercase tracking-wider">
+                  <span className="text-[9px] bg-accent-primary/10 text-accent-primary border border-accent-primary/20 px-2 py-0.5 rounded-full font-mono uppercase tracking-wider">
                     {tickerInfo.industry}
                   </span>
                 )}
                 {tickerInfo?.sector && (
-                  <span className="text-[9px] bg-white/[0.04] text-gray-400 border border-white/[0.06] px-2 py-0.5 rounded-full font-mono uppercase tracking-wider">
+                  <span className="text-[9px] bg-bg-tertiary text-text-secondary border border-border-primary px-2 py-0.5 rounded-full font-mono uppercase tracking-wider">
                     {tickerInfo.sector}
                   </span>
                 )}
               </div>
             )}
-            {tickerInfo?.name && <p className="text-xs text-gray-400 mt-0.5">{tickerInfo.name}</p>}
+            {tickerInfo?.name && <p className="text-xs text-text-secondary mt-0.5">{tickerInfo.name}</p>}
           </div>
           <div className="w-full md:w-72">
             <SearchAutocomplete
@@ -295,10 +295,10 @@ export default function TickerDeepDivePage() {
                   <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest">Live · 10s</span>
                 </div>
               )}
-              <div className={`text-3xl font-mono font-bold transition-colors ${priceFlash === "up" ? "flash-up" : priceFlash === "down" ? "flash-down" : "text-white"}`}>
+              <div className={`text-3xl font-mono font-bold transition-colors ${priceFlash === "up" ? "flash-up" : priceFlash === "down" ? "flash-down" : "text-text-primary"}`}>
                 ₹{fmt(price, 2)}
               </div>
-              <div className={`flex items-center text-sm font-mono font-semibold mt-0.5 ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+              <div className={`flex items-center text-sm font-mono font-semibold mt-0.5 ${isUp ? "text-positive" : "text-negative"}`}>
                 {isUp ? <ArrowUpRight className="w-4 h-4 mr-0.5" /> : <ArrowDownRight className="w-4 h-4 mr-0.5" />}
                 {isUp ? "+" : ""}₹{fmt(Math.abs(change), 2)} ({isUp ? "+" : ""}{fmt(Math.abs(changePct), 2)}%)
               </div>
@@ -315,8 +315,8 @@ export default function TickerDeepDivePage() {
                 { l: "Beta",        v: tickerInfo?.beta ? fmt(tickerInfo.beta, 2) : "–" },
               ].map(({ l, v }) => (
                 <div key={l}>
-                  <div className="text-sm font-mono font-bold text-white">{v}</div>
-                  <div className="text-[9px] text-gray-500 uppercase tracking-wider font-mono">{l}</div>
+                  <div className="text-sm font-mono font-bold text-text-primary">{v}</div>
+                  <div className="text-[9px] text-text-muted uppercase tracking-wider font-mono">{l}</div>
                 </div>
               ))}
             </div>
@@ -331,15 +331,15 @@ export default function TickerDeepDivePage() {
               onClick={() => handleTab(id)}
               className={`flex items-center space-x-1.5 px-4 py-2.5 text-[11px] font-medium font-mono uppercase tracking-wide border-b-2 whitespace-nowrap transition-all duration-150 cursor-pointer ${
                 activeTab === id
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-gray-500 hover:text-gray-300"
+                  ? "border-accent-primary text-accent-primary"
+                  : "border-transparent text-text-muted hover:text-text-secondary"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{label}</span>
             </button>
           ))}
-          {tabLoading && <div className="ml-3 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />}
+          {tabLoading && <div className="ml-3 w-4 h-4 border-2 border-accent-primary border-t-transparent rounded-full animate-spin shrink-0" />}
         </div>
       </div>
 
@@ -347,8 +347,8 @@ export default function TickerDeepDivePage() {
       <div className="flex-1 overflow-y-auto p-6">
         {coreLoading ? (
           <div className="flex flex-col items-center justify-center h-full space-y-3 py-24">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-gray-500 font-mono">Loading Terminal…</span>
+            <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-text-muted font-mono">Loading Terminal…</span>
           </div>
         ) : (
           <>
@@ -367,8 +367,8 @@ export default function TickerDeepDivePage() {
                   {tickerInfo && <>
                     <StatCard label="Open" value={tickerInfo.open ? `₹${fmt(tickerInfo.open, 2)}` : "–"} />
                     <StatCard label="Prev Close" value={tickerInfo.prev_close ? `₹${fmt(tickerInfo.prev_close, 2)}` : "–"} />
-                    <StatCard label="Day High" value={tickerInfo.day_high ? `₹${fmt(tickerInfo.day_high, 0)}` : "–"} color="text-emerald-400" />
-                    <StatCard label="Day Low" value={tickerInfo.day_low  ? `₹${fmt(tickerInfo.day_low, 0)}` : "–"} color="text-rose-400" />
+                    <StatCard label="Day High" value={tickerInfo.day_high ? `₹${fmt(tickerInfo.day_high, 0)}` : "–"} color="text-positive" />
+                    <StatCard label="Day Low" value={tickerInfo.day_low  ? `₹${fmt(tickerInfo.day_low, 0)}` : "–"} color="text-negative" />
                     <StatCard label="Avg Volume" value={tickerInfo.avg_volume ? (tickerInfo.avg_volume >= 1e7 ? `${(tickerInfo.avg_volume/1e7).toFixed(2)}Cr` : `${(tickerInfo.avg_volume/1e5).toFixed(1)}L`) : "–"} />
                     <StatCard label="Mkt State" value={tickerInfo.market_state || "–"} />
                   </>}
@@ -382,19 +382,19 @@ export default function TickerDeepDivePage() {
                     {/* 52W Range */}
                     {tickerInfo?.year_high && tickerInfo?.year_low && (
                       <div className="mb-4">
-                        <div className="flex justify-between text-[10px] font-mono text-gray-400 mb-1">
+                        <div className="flex justify-between text-[10px] font-mono text-text-secondary mb-1">
                           <span>52W Low: ₹{fmt(tickerInfo.year_low, 0)}</span>
                           <span>52W High: ₹{fmt(tickerInfo.year_high, 0)}</span>
                         </div>
-                        <div className="h-2 bg-white/[0.05] rounded-full overflow-hidden">
+                        <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-500 rounded-full"
                             style={{ width: `${Math.min(100, Math.max(0, ((price - tickerInfo.year_low) / (tickerInfo.year_high - tickerInfo.year_low)) * 100))}%` }}
                           />
                         </div>
-                        <div className="flex justify-between text-[9px] font-mono text-gray-600 mt-1">
+                        <div className="flex justify-between text-[9px] font-mono text-text-muted mt-1">
                           <span>–{tickerInfo.year_low ? ((1 - tickerInfo.year_low/price)*100).toFixed(1) : 0}%</span>
-                          <span className="text-blue-400">CMP ₹{fmt(price, 2)}</span>
+                          <span className="text-accent-primary">CMP ₹{fmt(price, 2)}</span>
                           <span>+{tickerInfo.year_high ? ((tickerInfo.year_high/price - 1)*100).toFixed(1) : 0}% to ATH</span>
                         </div>
                       </div>
@@ -402,24 +402,24 @@ export default function TickerDeepDivePage() {
                     {/* Pivot Points */}
                     {pivots && (
                       <div className="space-y-1.5">
-                        <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest mb-2">Classic Pivot (Prior Day)</p>
+                        <p className="text-[9px] font-mono text-text-muted uppercase tracking-widest mb-2">Classic Pivot (Prior Day)</p>
                         {[
-                          { l: "R3", v: pivots.r3, c: "text-emerald-300" },
-                          { l: "R2", v: pivots.r2, c: "text-emerald-400" },
-                          { l: "R1", v: pivots.r1, c: "text-emerald-500" },
-                          { l: "PP", v: pivots.pp, c: "text-blue-400" },
-                          { l: "S1", v: pivots.s1, c: "text-rose-500" },
-                          { l: "S2", v: pivots.s2, c: "text-rose-400" },
-                          { l: "S3", v: pivots.s3, c: "text-rose-300" },
+                          { l: "R3", v: pivots.r3, c: "text-positive" },
+                          { l: "R2", v: pivots.r2, c: "text-positive" },
+                          { l: "R1", v: pivots.r1, c: "text-positive" },
+                          { l: "PP", v: pivots.pp, c: "text-accent-primary" },
+                          { l: "S1", v: pivots.s1, c: "text-negative" },
+                          { l: "S2", v: pivots.s2, c: "text-negative" },
+                          { l: "S3", v: pivots.s3, c: "text-negative" },
                         ].map(({ l, v, c }) => (
-                          <div key={l} className={`flex justify-between text-[10px] font-mono ${l === "PP" ? "bg-blue-500/5 rounded px-2 py-0.5 border border-blue-500/10" : ""}`}>
-                            <span className="text-gray-500">{l}</span>
+                          <div key={l} className={`flex justify-between text-[10px] font-mono ${l === "PP" ? "bg-accent-primary/5 rounded px-2 py-0.5 border border-accent-primary/10" : ""}`}>
+                            <span className="text-text-muted">{l}</span>
                             <span className={c}>₹{fmt(v, 2)}</span>
-                            <span className="text-gray-600">{v > 0 ? ((v/price - 1)*100).toFixed(2) : ""}%</span>
+                            <span className="text-text-muted">{v > 0 ? ((v/price - 1)*100).toFixed(2) : ""}%</span>
                           </div>
                         ))}
                         {/* Fibonacci */}
-                        <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest mt-3 mb-1.5">Fibonacci</p>
+                        <p className="text-[9px] font-mono text-text-muted uppercase tracking-widest mt-3 mb-1.5">Fibonacci</p>
                         {[
                           { l: "Fib R2 (61.8%)", v: pivots.fr2 },
                           { l: "Fib R1 (38.2%)", v: pivots.fr1 },
@@ -427,8 +427,8 @@ export default function TickerDeepDivePage() {
                           { l: "Fib S2 (61.8%)", v: pivots.fs2 },
                         ].map(({ l, v }) => (
                           <div key={l} className="flex justify-between text-[10px] font-mono">
-                            <span className="text-gray-500">{l}</span>
-                            <span className="text-gray-300">₹{fmt(v, 2)}</span>
+                            <span className="text-text-muted">{l}</span>
+                            <span className="text-text-secondary">₹{fmt(v, 2)}</span>
                           </div>
                         ))}
                       </div>
@@ -442,38 +442,38 @@ export default function TickerDeepDivePage() {
                       <div className="space-y-4">
                         {/* Rating widget */}
                         <div className={`flex items-center justify-between p-4 rounded-xl border ${
-                          techRating.overall.includes("BUY") ? "bg-emerald-500/8 border-emerald-500/20" :
-                          techRating.overall.includes("SELL") ? "bg-rose-500/8 border-rose-500/20" :
-                          "bg-slate-500/8 border-slate-500/20"
+                          techRating.overall.includes("BUY") ? "bg-positive-bg border-positive/20" :
+                          techRating.overall.includes("SELL") ? "bg-negative-bg border-negative/20" :
+                          "bg-neutral-bg border-neutral/20"
                         }`}>
                           <div>
                             <p className={`text-lg font-mono font-bold ${
-                              techRating.overall.includes("BUY") ? "text-emerald-400" :
-                              techRating.overall.includes("SELL") ? "text-rose-400" : "text-slate-400"
+                              techRating.overall.includes("BUY") ? "text-positive" :
+                              techRating.overall.includes("SELL") ? "text-negative" : "text-neutral"
                             }`}>{techRating.overall}</p>
-                            <p className="text-[10px] font-mono text-gray-500 mt-0.5">
+                            <p className="text-[10px] font-mono text-text-muted mt-0.5">
                               {techRating.buys}B · {techRating.neutrals}N · {techRating.sells}S from {techRating.buys + techRating.neutrals + techRating.sells} indicators
                             </p>
                           </div>
                           {/* Mini bar */}
                           <div className="flex items-center space-x-0.5 h-8">
-                            {[...Array(techRating.buys)].map((_, i) => <div key={i} className="w-1.5 h-full rounded-sm bg-emerald-500/70" />)}
-                            {[...Array(techRating.neutrals)].map((_, i) => <div key={i} className="w-1.5 h-4 rounded-sm bg-slate-500/70" />)}
-                            {[...Array(techRating.sells)].map((_, i) => <div key={i} className="w-1.5 h-full rounded-sm bg-rose-500/70" />)}
+                            {[...Array(techRating.buys)].map((_, i) => <div key={i} className="w-1.5 h-full rounded-sm bg-positive" />)}
+                            {[...Array(techRating.neutrals)].map((_, i) => <div key={i} className="w-1.5 h-4 rounded-sm bg-neutral" />)}
+                            {[...Array(techRating.sells)].map((_, i) => <div key={i} className="w-1.5 h-full rounded-sm bg-negative" />)}
                           </div>
                         </div>
                         {/* Key levels */}
                         <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                           {[
-                            { l: "RSI (14)",  v: techRating.rsi.toFixed(1), c: techRating.rsi > 70 ? "text-rose-400" : techRating.rsi < 30 ? "text-emerald-400" : "text-white" },
-                            { l: "MACD",     v: techRating.macd.toFixed(3), c: techRating.macd > 0 ? "text-emerald-400" : "text-rose-400" },
-                            { l: "Stoch %K", v: techRating.stochK.toFixed(1), c: techRating.stochK > 80 ? "text-rose-400" : techRating.stochK < 20 ? "text-emerald-400" : "text-white" },
-                            { l: "EMA 20",   v: `₹${fmt(techRating.ema20, 0)}`, c: price > techRating.ema20 ? "text-emerald-400" : "text-rose-400" },
-                            { l: "EMA 50",   v: techRating.ema50 ? `₹${fmt(techRating.ema50, 0)}` : "–", c: techRating.ema50 && price > techRating.ema50 ? "text-emerald-400" : "text-rose-400" },
-                            { l: "ATR (14)", v: `₹${fmt(techRating.atr, 1)}`, c: "text-white" },
+                            { l: "RSI (14)",  v: techRating.rsi.toFixed(1), c: techRating.rsi > 70 ? "text-negative" : techRating.rsi < 30 ? "text-positive" : "text-text-primary" },
+                            { l: "MACD",     v: techRating.macd.toFixed(3), c: techRating.macd > 0 ? "text-positive" : "text-negative" },
+                            { l: "Stoch %K", v: techRating.stochK.toFixed(1), c: techRating.stochK > 80 ? "text-negative" : techRating.stochK < 20 ? "text-positive" : "text-text-primary" },
+                            { l: "EMA 20",   v: `₹${fmt(techRating.ema20, 0)}`, c: price > techRating.ema20 ? "text-positive" : "text-negative" },
+                            { l: "EMA 50",   v: techRating.ema50 ? `₹${fmt(techRating.ema50, 0)}` : "–", c: techRating.ema50 && price > techRating.ema50 ? "text-positive" : "text-negative" },
+                            { l: "ATR (14)", v: `₹${fmt(techRating.atr, 1)}`, c: "text-text-primary" },
                           ].map(({ l, v, c }) => (
-                            <div key={l} className="flex justify-between bg-white/[0.02] rounded px-2 py-1.5">
-                              <span className="text-gray-500">{l}</span>
+                            <div key={l} className="flex justify-between bg-bg-tertiary rounded px-2 py-1.5">
+                              <span className="text-text-muted">{l}</span>
                               <span className={c}>{v}</span>
                             </div>
                           ))}
@@ -481,14 +481,14 @@ export default function TickerDeepDivePage() {
                         {/* Golden/Death cross */}
                         {techRating.goldenCross !== null && (
                           <div className={`text-[10px] font-mono px-3 py-2 rounded-xl border ${
-                            techRating.goldenCross ? "bg-emerald-500/8 border-emerald-500/20 text-emerald-400" : "bg-rose-500/8 border-rose-500/20 text-rose-400"
+                            techRating.goldenCross ? "bg-positive-bg border-positive/20 text-positive" : "bg-negative-bg border-negative/20 text-negative"
                           }`}>
                             {techRating.goldenCross ? "✦ Golden Cross: SMA50 > SMA200 — Bullish trend" : "✦ Death Cross: SMA50 < SMA200 — Bearish trend"}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-600 font-mono text-center py-8">Need ≥ 20 candles of history</p>
+                      <p className="text-xs text-text-muted font-mono text-center py-8">Need ≥ 20 candles of history</p>
                     )}
                   </div>
                 </div>
@@ -509,33 +509,33 @@ export default function TickerDeepDivePage() {
                         {/* Gauge */}
                         <div className="flex flex-col items-center justify-center min-w-[140px]">
                           <div className={`text-2xl font-mono font-bold mb-1 ${
-                            techRating.overall.includes("BUY") ? "text-emerald-400" :
-                            techRating.overall.includes("SELL") ? "text-rose-400" : "text-slate-400"
+                            techRating.overall.includes("BUY") ? "text-positive" :
+                            techRating.overall.includes("SELL") ? "text-negative" : "text-neutral"
                           }`}>{techRating.overall}</div>
                           <div className="flex gap-3 text-xs font-mono">
-                            <span className="text-emerald-400">{techRating.buys} BUY</span>
-                            <span className="text-slate-400">{techRating.neutrals} NEUTRAL</span>
-                            <span className="text-rose-400">{techRating.sells} SELL</span>
+                            <span className="text-positive">{techRating.buys} BUY</span>
+                            <span className="text-neutral">{techRating.neutrals} NEUTRAL</span>
+                            <span className="text-negative">{techRating.sells} SELL</span>
                           </div>
                           <div className="flex mt-3 gap-0.5 h-3">
-                            {[...Array(techRating.buys)].map((_, i) => <div key={i} className="w-3 h-full bg-emerald-500 rounded-sm" />)}
-                            {[...Array(techRating.neutrals)].map((_, i) => <div key={i} className="w-3 h-2 bg-slate-500 rounded-sm self-end" />)}
-                            {[...Array(techRating.sells)].map((_, i) => <div key={i} className="w-3 h-full bg-rose-500 rounded-sm" />)}
+                            {[...Array(techRating.buys)].map((_, i) => <div key={i} className="w-3 h-full bg-positive rounded-sm" />)}
+                            {[...Array(techRating.neutrals)].map((_, i) => <div key={i} className="w-3 h-2 bg-neutral rounded-sm self-end" />)}
+                            {[...Array(techRating.sells)].map((_, i) => <div key={i} className="w-3 h-full bg-negative rounded-sm" />)}
                           </div>
                         </div>
                         {/* Signal table */}
                         <div className="flex-1 overflow-x-auto">
                           <table className="w-full text-[10px] font-mono">
-                            <thead><tr className="text-gray-600 border-b border-white/[0.05]">
+                            <thead><tr className="text-text-muted border-b border-border-primary">
                               <th className="text-left py-1 pr-4">Indicator</th>
                               <th className="text-right py-1 pr-4">Value</th>
                               <th className="text-right py-1">Signal</th>
                             </tr></thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-border-primary">
                               {techRating.signals.map((sig) => (
-                                <tr key={sig.name} className="hover:bg-white/[0.02]">
-                                  <td className="py-1 pr-4 text-gray-300">{sig.name}</td>
-                                  <td className="py-1 pr-4 text-right text-gray-400">{sig.value}</td>
+                                <tr key={sig.name} className="hover:bg-bg-tertiary">
+                                  <td className="py-1 pr-4 text-text-secondary">{sig.name}</td>
+                                  <td className="py-1 pr-4 text-right text-text-secondary">{sig.value}</td>
                                   <td className="py-1 text-right"><SignalBadge signal={sig.signal} /></td>
                                 </tr>
                               ))}
@@ -551,11 +551,11 @@ export default function TickerDeepDivePage() {
                       <div className="h-[180px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={techRating.chartData} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
                             <XAxis dataKey="i" hide />
-                            <YAxis tick={{ fill: "#4b5563", fontSize: 9 }} dx={-4} />
-                            <Tooltip contentStyle={{ background: "#080d1a", borderColor: "rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 10, fontFamily: "monospace" }} />
-                            <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" />
+                            <YAxis tick={{ fill: "var(--text-muted)", fontSize: 9 }} dx={-4} />
+                            <Tooltip contentStyle={{ background: "var(--bg-elevated)", borderColor: "var(--border-primary)", borderRadius: 8, fontSize: 10, fontFamily: "monospace" }} />
+                            <ReferenceLine y={0} stroke="var(--border-primary)" />
                             <Bar dataKey="histogram" name="Histogram" fill="#6366f1"
                               label={false}
                               shape={(props: any) => {
@@ -583,17 +583,17 @@ export default function TickerDeepDivePage() {
                                   <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
                               <XAxis dataKey="i" hide />
-                              <YAxis domain={[0, 100]} tick={{ fill: "#4b5563", fontSize: 9 }} dx={-4} />
-                              <Tooltip contentStyle={{ background: "#080d1a", borderColor: "rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 10, fontFamily: "monospace" }} formatter={(v: any) => [Number(v).toFixed(1), "RSI"]} />
+                              <YAxis domain={[0, 100]} tick={{ fill: "var(--text-muted)", fontSize: 9 }} dx={-4} />
+                              <Tooltip contentStyle={{ background: "var(--bg-elevated)", borderColor: "var(--border-primary)", borderRadius: 8, fontSize: 10, fontFamily: "monospace" }} formatter={(v: any) => [Number(v).toFixed(1), "RSI"]} />
                               <ReferenceLine y={70} stroke="rgba(239,68,68,0.4)" strokeDasharray="3 3" />
                               <ReferenceLine y={30} stroke="rgba(16,185,129,0.4)" strokeDasharray="3 3" />
                               <Area type="monotone" dataKey="rsi" stroke="#8b5cf6" strokeWidth={1.5} fill="url(#rsiGrad)" dot={false} />
                             </AreaChart>
                           </ResponsiveContainer>
                         </div>
-                        <p className="text-[9px] font-mono text-gray-500 mt-1">Current: {techRating.rsi.toFixed(1)} — {techRating.rsi > 70 ? "OVERBOUGHT" : techRating.rsi < 30 ? "OVERSOLD" : "NEUTRAL"}</p>
+                        <p className="text-[9px] font-mono text-text-muted mt-1">Current: {techRating.rsi.toFixed(1)} — {techRating.rsi > 70 ? "OVERBOUGHT" : techRating.rsi < 30 ? "OVERSOLD" : "NEUTRAL"}</p>
                       </div>
 
                       <div className="glass-panel p-5">
@@ -601,10 +601,10 @@ export default function TickerDeepDivePage() {
                         <div className="h-[160px]">
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={techRating.chartData} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
                               <XAxis dataKey="i" hide />
-                              <YAxis domain={[0, 100]} tick={{ fill: "#4b5563", fontSize: 9 }} dx={-4} />
-                              <Tooltip contentStyle={{ background: "#080d1a", borderColor: "rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 10, fontFamily: "monospace" }} />
+                              <YAxis domain={[0, 100]} tick={{ fill: "var(--text-muted)", fontSize: 9 }} dx={-4} />
+                              <Tooltip contentStyle={{ background: "var(--bg-elevated)", borderColor: "var(--border-primary)", borderRadius: 8, fontSize: 10, fontFamily: "monospace", color: "var(--text-primary)" }} />
                               <ReferenceLine y={80} stroke="rgba(239,68,68,0.4)" strokeDasharray="3 3" />
                               <ReferenceLine y={20} stroke="rgba(16,185,129,0.4)" strokeDasharray="3 3" />
                               <Line type="monotone" dataKey="stochK" stroke="#06b6d4" strokeWidth={1.5} dot={false} name="%K" />
@@ -612,7 +612,7 @@ export default function TickerDeepDivePage() {
                             </LineChart>
                           </ResponsiveContainer>
                         </div>
-                        <p className="text-[9px] font-mono text-gray-500 mt-1">%K: {techRating.stochK.toFixed(1)} · %D: {techRating.stochD.toFixed(1)}</p>
+                        <p className="text-[9px] font-mono text-text-muted mt-1">%K: {techRating.stochK.toFixed(1)} · %D: {techRating.stochD.toFixed(1)}</p>
                       </div>
                     </div>
 
@@ -621,13 +621,13 @@ export default function TickerDeepDivePage() {
                       <SectionHeader icon={TrendingUp} title="Moving Averages vs CMP" />
                       <div className="overflow-x-auto">
                         <table className="w-full text-[11px] font-mono">
-                          <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                          <thead><tr className="text-text-muted border-b border-border-primary">
                             <th className="text-left py-2 pr-4">MA</th>
                             <th className="text-right py-2 pr-4">Value</th>
                             <th className="text-right py-2 pr-4">vs CMP</th>
                             <th className="text-right py-2">Signal</th>
                           </tr></thead>
-                          <tbody className="divide-y divide-white/[0.03]">
+                          <tbody className="divide-y divide-border-primary">
                             {[
                               { n: "EMA 9",   v: techRating.ema9 },
                               { n: "EMA 20",  v: techRating.ema20 },
@@ -638,10 +638,10 @@ export default function TickerDeepDivePage() {
                             ].filter(x => x.v !== null).map(({ n, v }) => {
                               const pct = v ? ((price - v!) / v! * 100) : 0;
                               return (
-                                <tr key={n} className="hover:bg-white/[0.02]">
-                                  <td className="py-2 pr-4 text-gray-300">{n}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-300">₹{fmt(v, 2)}</td>
-                                  <td className={`py-2 pr-4 text-right ${pct >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{pct >= 0 ? "+" : ""}{pct.toFixed(2)}%</td>
+                                <tr key={n} className="hover:bg-bg-tertiary">
+                                  <td className="py-2 pr-4 text-text-secondary">{n}</td>
+                                  <td className="py-2 pr-4 text-right text-text-secondary">₹{fmt(v, 2)}</td>
+                                  <td className={`py-2 pr-4 text-right ${pct >= 0 ? "text-positive" : "text-negative"}`}>{pct >= 0 ? "+" : ""}{pct.toFixed(2)}%</td>
                                   <td className="py-2 text-right"><SignalBadge signal={pct >= 0 ? "BUY" : "SELL"} /></td>
                                 </tr>
                               );
@@ -653,7 +653,7 @@ export default function TickerDeepDivePage() {
                   </>
                 ) : (
                   <div className="glass-panel p-12 text-center">
-                    <p className="text-sm font-mono text-gray-500">Not enough price history to compute indicators (need ≥ 20 candles).</p>
+                    <p className="text-sm font-mono text-text-muted">Not enough price history to compute indicators (need ≥ 20 candles).</p>
                   </div>
                 )}
               </div>
@@ -695,7 +695,7 @@ export default function TickerDeepDivePage() {
                       <div className="glass-panel p-5">
                         <SectionHeader icon={BarChart2} title="Dividends" />
                         <div className="grid grid-cols-2 gap-3">
-                          <StatCard label="Div Yield" value={fundamentals.dividend_yield ? fmtPct(fundamentals.dividend_yield) : "–"} color="text-emerald-400" />
+                          <StatCard label="Div Yield" value={fundamentals.dividend_yield ? fmtPct(fundamentals.dividend_yield) : "–"} color="text-positive" />
                           <StatCard label="Div Rate"  value={fundamentals.dividend_rate ? `₹${fmt(fundamentals.dividend_rate, 2)}` : "–"} />
                           <StatCard label="Payout %"  value={fundamentals.payout_ratio ? fmtPct(fundamentals.payout_ratio) : "–"} />
                           <StatCard label="5Y Avg Yield" value={fundamentals.five_year_avg_yield ? `${(fundamentals.five_year_avg_yield * 100).toFixed(2)}%` : "–"} />
@@ -707,14 +707,14 @@ export default function TickerDeepDivePage() {
                     <div className="glass-panel p-5">
                       <SectionHeader icon={TrendingUp} title="Profitability & Margins" />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <StatCard label="ROE"           value={fundamentals.roe ? fmtPct(fundamentals.roe) : "–"} color="text-emerald-400" />
+                        <StatCard label="ROE"           value={fundamentals.roe ? fmtPct(fundamentals.roe) : "–"} color="text-positive" />
                         <StatCard label="ROA"           value={fundamentals.roa ? fmtPct(fundamentals.roa) : "–"} />
                         <StatCard label="Gross Margin"  value={fundamentals.gross_margins ? fmtPct(fundamentals.gross_margins) : "–"} />
                         <StatCard label="Oper. Margin"  value={fundamentals.operating_margins ? fmtPct(fundamentals.operating_margins) : "–"} />
                         <StatCard label="Net Margin"    value={fundamentals.profit_margins ? fmtPct(fundamentals.profit_margins) : "–"} />
                         <StatCard label="EBITDA Margin" value={fundamentals.ebitda_margins ? fmtPct(fundamentals.ebitda_margins) : "–"} />
-                        <StatCard label="Rev. Growth"   value={fundamentals.revenue_growth ? fmtPct(fundamentals.revenue_growth) : "–"} color={fundamentals.revenue_growth > 0 ? "text-emerald-400" : "text-rose-400"} />
-                        <StatCard label="Earn. Growth"  value={fundamentals.earnings_growth ? fmtPct(fundamentals.earnings_growth) : "–"} color={fundamentals.earnings_growth > 0 ? "text-emerald-400" : "text-rose-400"} />
+                        <StatCard label="Rev. Growth"   value={fundamentals.revenue_growth ? fmtPct(fundamentals.revenue_growth) : "–"} color={fundamentals.revenue_growth > 0 ? "text-positive" : "text-negative"} />
+                        <StatCard label="Earn. Growth"  value={fundamentals.earnings_growth ? fmtPct(fundamentals.earnings_growth) : "–"} color={fundamentals.earnings_growth > 0 ? "text-positive" : "text-negative"} />
                       </div>
                     </div>
 
@@ -739,7 +739,7 @@ export default function TickerDeepDivePage() {
                         <SectionHeader icon={Users} title="Peer Comparison" badge={fundamentals.sector || ""} />
                         <div className="overflow-x-auto">
                           <table className="w-full text-[10px] font-mono">
-                            <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                            <thead><tr className="text-text-muted border-b border-border-primary">
                               <th className="text-left py-2 pr-3">Company</th>
                               <th className="text-right py-2 pr-3">Price</th>
                               <th className="text-right py-2 pr-3">Chg%</th>
@@ -749,30 +749,30 @@ export default function TickerDeepDivePage() {
                               <th className="text-right py-2 pr-3">ROE</th>
                               <th className="text-right py-2">Net Margin</th>
                             </tr></thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-border-primary">
                               {/* Current symbol */}
-                              <tr className="bg-blue-500/5 border border-blue-500/10 rounded">
-                                <td className="py-2 pr-3 text-blue-400 font-bold">{symbol} (You)</td>
-                                <td className="py-2 pr-3 text-right text-white">₹{fmt(price, 0)}</td>
-                                <td className={`py-2 pr-3 text-right ${isUp ? "text-emerald-400" : "text-rose-400"}`}>{isUp ? "+" : ""}{fmt(changePct, 2)}%</td>
-                                <td className="py-2 pr-3 text-right text-gray-300">{fmtCr(fundamentals.market_cap)}</td>
-                                <td className="py-2 pr-3 text-right text-gray-300">{fundamentals.pe_ttm ? fmt(fundamentals.pe_ttm, 1) : "–"}</td>
-                                <td className="py-2 pr-3 text-right text-gray-300">{fundamentals.pb_ratio ? fmt(fundamentals.pb_ratio, 2) : "–"}</td>
-                                <td className="py-2 pr-3 text-right text-gray-300">{fundamentals.roe ? fmtPct(fundamentals.roe) : "–"}</td>
-                                <td className="py-2 text-right text-gray-300">{fundamentals.profit_margins ? fmtPct(fundamentals.profit_margins) : "–"}</td>
+                              <tr className="bg-accent-primary/5 border border-accent-primary/10 rounded">
+                                <td className="py-2 pr-3 text-accent-primary font-bold">{symbol} (You)</td>
+                                <td className="py-2 pr-3 text-right text-text-primary">₹{fmt(price, 0)}</td>
+                                <td className={`py-2 pr-3 text-right ${isUp ? "text-positive" : "text-negative"}`}>{isUp ? "+" : ""}{fmt(changePct, 2)}%</td>
+                                <td className="py-2 pr-3 text-right text-text-secondary">{fmtCr(fundamentals.market_cap)}</td>
+                                <td className="py-2 pr-3 text-right text-text-secondary">{fundamentals.pe_ttm ? fmt(fundamentals.pe_ttm, 1) : "–"}</td>
+                                <td className="py-2 pr-3 text-right text-text-secondary">{fundamentals.pb_ratio ? fmt(fundamentals.pb_ratio, 2) : "–"}</td>
+                                <td className="py-2 pr-3 text-right text-text-secondary">{fundamentals.roe ? fmtPct(fundamentals.roe) : "–"}</td>
+                                <td className="py-2 text-right text-text-secondary">{fundamentals.profit_margins ? fmtPct(fundamentals.profit_margins) : "–"}</td>
                               </tr>
                               {peers.map(p => (
-                                <tr key={p.symbol} className="hover:bg-white/[0.02] cursor-pointer" onClick={() => router.push(`/ticker/${p.symbol}`)}>
-                                  <td className="py-2 pr-3 text-gray-300">{p.symbol}</td>
-                                  <td className="py-2 pr-3 text-right text-white">{p.price ? `₹${fmt(p.price, 0)}` : "–"}</td>
-                                  <td className={`py-2 pr-3 text-right ${(p.change_pct ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                <tr key={p.symbol} className="hover:bg-bg-tertiary cursor-pointer" onClick={() => router.push(`/ticker/${p.symbol}`)}>
+                                  <td className="py-2 pr-3 text-text-secondary">{p.symbol}</td>
+                                  <td className="py-2 pr-3 text-right text-text-primary">{p.price ? `₹${fmt(p.price, 0)}` : "–"}</td>
+                                  <td className={`py-2 pr-3 text-right ${(p.change_pct ?? 0) >= 0 ? "text-positive" : "text-negative"}`}>
                                     {p.change_pct != null ? `${p.change_pct >= 0 ? "+" : ""}${fmt(p.change_pct, 2)}%` : "–"}
                                   </td>
-                                  <td className="py-2 pr-3 text-right text-gray-400">{fmtCr(p.market_cap)}</td>
-                                  <td className="py-2 pr-3 text-right text-gray-400">{p.pe_ratio ? fmt(p.pe_ratio, 1) : "–"}</td>
-                                  <td className="py-2 pr-3 text-right text-gray-400">{p.pb_ratio ? fmt(p.pb_ratio, 2) : "–"}</td>
-                                  <td className="py-2 pr-3 text-right text-gray-400">{p.roe ? fmtPct(p.roe) : "–"}</td>
-                                  <td className="py-2 text-right text-gray-400">{p.profit_margin ? fmtPct(p.profit_margin) : "–"}</td>
+                                  <td className="py-2 pr-3 text-right text-text-secondary">{fmtCr(p.market_cap)}</td>
+                                  <td className="py-2 pr-3 text-right text-text-secondary">{p.pe_ratio ? fmt(p.pe_ratio, 1) : "–"}</td>
+                                  <td className="py-2 pr-3 text-right text-text-secondary">{p.pb_ratio ? fmt(p.pb_ratio, 2) : "–"}</td>
+                                  <td className="py-2 pr-3 text-right text-text-secondary">{p.roe ? fmtPct(p.roe) : "–"}</td>
+                                  <td className="py-2 text-right text-text-secondary">{p.profit_margin ? fmtPct(p.profit_margin) : "–"}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -783,8 +783,8 @@ export default function TickerDeepDivePage() {
                   </>
                 ) : (
                   <div className="glass-panel p-12 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3" />
-                    <span className="text-xs font-mono text-gray-500">Loading fundamentals from Yahoo Finance…</span>
+                    <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin mr-3" />
+                    <span className="text-xs font-mono text-text-muted">Loading fundamentals from Yahoo Finance…</span>
                   </div>
                 )}
               </div>
@@ -813,21 +813,21 @@ export default function TickerDeepDivePage() {
                         <SectionHeader icon={BarChart2} title="Quarterly Financials (TTM)" />
                         <div className="overflow-x-auto">
                           <table className="w-full text-[10px] font-mono min-w-[600px]">
-                            <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                            <thead><tr className="text-text-muted border-b border-border-primary">
                               <th className="text-left py-2 pr-4">Quarter</th>
                               <th className="text-right py-2 pr-4">Revenue</th>
                               <th className="text-right py-2 pr-4">Gross Profit</th>
                               <th className="text-right py-2 pr-4">EBITDA</th>
                               <th className="text-right py-2">Net Income</th>
                             </tr></thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-border-primary">
                               {earnings.quarterly.map((q: any, i: number) => (
-                                <tr key={i} className="hover:bg-white/[0.02]">
-                                  <td className="py-2 pr-4 text-gray-300 font-bold">{q.period}</td>
-                                  <td className="py-2 pr-4 text-right text-white">{q.revenue ? fmtCr(q.revenue) : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-300">{q.gross_profit ? fmtCr(q.gross_profit) : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-300">{q.ebitda ? fmtCr(q.ebitda) : "–"}</td>
-                                  <td className={`py-2 text-right font-bold ${q.net_income > 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                <tr key={i} className="hover:bg-bg-tertiary">
+                                  <td className="py-2 pr-4 text-text-secondary font-bold">{q.period}</td>
+                                  <td className="py-2 pr-4 text-right text-text-primary">{q.revenue ? fmtCr(q.revenue) : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-text-secondary">{q.gross_profit ? fmtCr(q.gross_profit) : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-text-secondary">{q.ebitda ? fmtCr(q.ebitda) : "–"}</td>
+                                  <td className={`py-2 text-right font-bold ${q.net_income > 0 ? "text-positive" : "text-negative"}`}>
                                     {q.net_income ? fmtCr(q.net_income) : "–"}
                                   </td>
                                 </tr>
@@ -839,10 +839,10 @@ export default function TickerDeepDivePage() {
                         <div className="h-[140px] mt-4">
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={[...earnings.quarterly].reverse()} margin={{ top: 4, right: 4, left: -10, bottom: 4 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                              <XAxis dataKey="period" tick={{ fill: "#4b5563", fontSize: 8 }} />
-                              <YAxis tick={{ fill: "#4b5563", fontSize: 8 }} tickFormatter={(v) => `${(v/1e9).toFixed(0)}B`} />
-                              <Tooltip contentStyle={{ background: "#080d1a", borderColor: "rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 10 }} formatter={(v: any) => [fmtCr(v), "Revenue"]} />
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
+                              <XAxis dataKey="period" tick={{ fill: "var(--text-muted)", fontSize: 8 }} />
+                              <YAxis tick={{ fill: "var(--text-muted)", fontSize: 8 }} tickFormatter={(v) => `${(v/1e9).toFixed(0)}B`} />
+                              <Tooltip contentStyle={{ background: "var(--bg-elevated)", borderColor: "var(--border-primary)", borderRadius: 8, fontSize: 10 }} formatter={(v: any) => [fmtCr(v), "Revenue"]} />
                               <Bar dataKey="revenue" fill="rgba(59,130,246,0.5)" radius={[3,3,0,0]} />
                               <Bar dataKey="net_income" fill="rgba(16,185,129,0.5)" radius={[3,3,0,0]} />
                             </BarChart>
@@ -857,21 +857,21 @@ export default function TickerDeepDivePage() {
                         <SectionHeader icon={BarChart2} title="Annual Financials" />
                         <div className="overflow-x-auto">
                           <table className="w-full text-[10px] font-mono min-w-[500px]">
-                            <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                            <thead><tr className="text-text-muted border-b border-border-primary">
                               <th className="text-left py-2 pr-4">Year</th>
                               <th className="text-right py-2 pr-4">Revenue</th>
                               <th className="text-right py-2 pr-4">Gross Profit</th>
                               <th className="text-right py-2 pr-4">EBITDA</th>
                               <th className="text-right py-2">Net Income</th>
                             </tr></thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-border-primary">
                               {earnings.annual.map((a: any, i: number) => (
-                                <tr key={i} className="hover:bg-white/[0.02]">
-                                  <td className="py-2 pr-4 text-gray-300 font-bold">{a.period}</td>
-                                  <td className="py-2 pr-4 text-right text-white">{a.revenue ? fmtCr(a.revenue) : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-300">{a.gross_profit ? fmtCr(a.gross_profit) : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-300">{a.ebitda ? fmtCr(a.ebitda) : "–"}</td>
-                                  <td className={`py-2 text-right font-bold ${a.net_income > 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                <tr key={i} className="hover:bg-bg-tertiary">
+                                  <td className="py-2 pr-4 text-text-secondary font-bold">{a.period}</td>
+                                  <td className="py-2 pr-4 text-right text-text-primary">{a.revenue ? fmtCr(a.revenue) : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-text-secondary">{a.gross_profit ? fmtCr(a.gross_profit) : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-text-secondary">{a.ebitda ? fmtCr(a.ebitda) : "–"}</td>
+                                  <td className={`py-2 text-right font-bold ${a.net_income > 0 ? "text-positive" : "text-negative"}`}>
                                     {a.net_income ? fmtCr(a.net_income) : "–"}
                                   </td>
                                 </tr>
@@ -888,19 +888,19 @@ export default function TickerDeepDivePage() {
                         <SectionHeader icon={Sparkles} title="EPS Surprise History" />
                         <div className="overflow-x-auto">
                           <table className="w-full text-[10px] font-mono">
-                            <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                            <thead><tr className="text-text-muted border-b border-border-primary">
                               <th className="text-left py-2 pr-4">Period</th>
                               <th className="text-right py-2 pr-4">Estimate</th>
                               <th className="text-right py-2 pr-4">Actual</th>
                               <th className="text-right py-2">Surprise</th>
                             </tr></thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-border-primary">
                               {earnings.eps_history.map((e: any, i: number) => (
-                                <tr key={i} className="hover:bg-white/[0.02]">
-                                  <td className="py-2 pr-4 text-gray-300">{e.period}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-400">{e.eps_estimate != null ? `₹${fmt(e.eps_estimate, 2)}` : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-white">{e.eps_actual != null ? `₹${fmt(e.eps_actual, 2)}` : "–"}</td>
-                                  <td className={`py-2 text-right font-bold ${(e.surprise_pct ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                <tr key={i} className="hover:bg-bg-tertiary">
+                                  <td className="py-2 pr-4 text-text-secondary">{e.period}</td>
+                                  <td className="py-2 pr-4 text-right text-text-muted">{e.eps_estimate != null ? `₹${fmt(e.eps_estimate, 2)}` : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-text-primary">{e.eps_actual != null ? `₹${fmt(e.eps_actual, 2)}` : "–"}</td>
+                                  <td className={`py-2 text-right font-bold ${(e.surprise_pct ?? 0) >= 0 ? "text-positive" : "text-negative"}`}>
                                     {e.surprise_pct != null ? `${e.surprise_pct >= 0 ? "+" : ""}${fmt(e.surprise_pct * 100, 2)}%` : "–"}
                                   </td>
                                 </tr>
@@ -913,8 +913,8 @@ export default function TickerDeepDivePage() {
                   </>
                 ) : (
                   <div className="glass-panel p-12 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3" />
-                    <span className="text-xs font-mono text-gray-500">Loading financials…</span>
+                    <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin mr-3" />
+                    <span className="text-xs font-mono text-text-muted">Loading financials…</span>
                   </div>
                 )}
               </div>
@@ -935,12 +935,12 @@ export default function TickerDeepDivePage() {
                           {holders.major_holders.map((h: any, i: number) => (
                             <div key={i}>
                               <div className="flex justify-between text-xs font-mono mb-1">
-                                <span className="text-gray-400">{h.label}</span>
-                                <span className="text-white font-bold">{h.pct != null ? `${h.pct.toFixed(2)}%` : "–"}</span>
+                                <span className="text-text-secondary">{h.label}</span>
+                                <span className="text-text-primary font-bold">{h.pct != null ? `${h.pct.toFixed(2)}%` : "–"}</span>
                               </div>
                               {h.pct != null && (
-                                <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, h.pct)}%` }} />
+                                <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+                                  <div className="h-full bg-accent-primary rounded-full transition-all duration-500" style={{ width: `${Math.min(100, h.pct)}%` }} />
                                 </div>
                               )}
                             </div>
@@ -955,21 +955,21 @@ export default function TickerDeepDivePage() {
                         <SectionHeader icon={Users} title="Top Institutional Holders" />
                         <div className="overflow-x-auto">
                           <table className="w-full text-[10px] font-mono">
-                            <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                            <thead><tr className="text-text-muted border-b border-border-primary">
                               <th className="text-left py-2 pr-4">Institution</th>
                               <th className="text-right py-2 pr-4">Shares</th>
                               <th className="text-right py-2 pr-4">Value</th>
                               <th className="text-right py-2 pr-4">% Held</th>
                               <th className="text-right py-2">As Of</th>
                             </tr></thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-border-primary">
                               {holders.institutional_holders.map((h: any, i: number) => (
-                                <tr key={i} className="hover:bg-white/[0.02]">
-                                  <td className="py-2 pr-4 text-gray-300 max-w-[200px] truncate">{h.holder}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-400">{h.shares ? (h.shares >= 1e7 ? `${(h.shares/1e7).toFixed(2)}Cr` : h.shares.toLocaleString("en-IN")) : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-gray-300">{h.value ? fmtCr(h.value) : "–"}</td>
-                                  <td className="py-2 pr-4 text-right text-blue-400">{h.pct_held != null ? `${(h.pct_held * 100).toFixed(3)}%` : "–"}</td>
-                                  <td className="py-2 text-right text-gray-600">{h.date || "–"}</td>
+                                <tr key={i} className="hover:bg-bg-tertiary">
+                                  <td className="py-2 pr-4 text-text-secondary max-w-[200px] truncate">{h.holder}</td>
+                                  <td className="py-2 pr-4 text-right text-text-muted">{h.shares ? (h.shares >= 1e7 ? `${(h.shares/1e7).toFixed(2)}Cr` : h.shares.toLocaleString("en-IN")) : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-text-secondary">{h.value ? fmtCr(h.value) : "–"}</td>
+                                  <td className="py-2 pr-4 text-right text-accent-primary">{h.pct_held != null ? `${(h.pct_held * 100).toFixed(3)}%` : "–"}</td>
+                                  <td className="py-2 text-right text-text-muted">{h.date || "–"}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -980,14 +980,14 @@ export default function TickerDeepDivePage() {
 
                     {!holders.major_holders?.length && !holders.institutional_holders?.length && (
                       <div className="glass-panel p-12 text-center">
-                        <p className="text-xs font-mono text-gray-500">Ownership data not available for this ticker.</p>
+                        <p className="text-xs font-mono text-text-muted">Ownership data not available for this ticker.</p>
                       </div>
                     )}
                   </>
                 ) : (
                   <div className="glass-panel p-12 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3" />
-                    <span className="text-xs font-mono text-gray-500">Loading ownership data…</span>
+                    <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin mr-3" />
+                    <span className="text-xs font-mono text-text-muted">Loading ownership data…</span>
                   </div>
                 )}
               </div>
@@ -1012,18 +1012,18 @@ export default function TickerDeepDivePage() {
                             return (
                               <div className="space-y-2">
                                 {[
-                                  { l: "Strong Buy", v: t.strong_buy || 0, c: "bg-emerald-500" },
-                                  { l: "Buy",         v: t.buy || 0,        c: "bg-emerald-400" },
-                                  { l: "Hold",        v: t.hold || 0,       c: "bg-amber-400" },
-                                  { l: "Sell",        v: t.sell || 0,       c: "bg-rose-400" },
-                                  { l: "Strong Sell", v: t.strong_sell || 0, c: "bg-rose-600" },
+                                  { l: "Strong Buy", v: t.strong_buy || 0, c: "bg-positive" },
+                                  { l: "Buy",         v: t.buy || 0,        c: "bg-positive" },
+                                  { l: "Hold",        v: t.hold || 0,       c: "bg-neutral" },
+                                  { l: "Sell",        v: t.sell || 0,       c: "bg-negative" },
+                                  { l: "Strong Sell", v: t.strong_sell || 0, c: "bg-negative" },
                                 ].map(({ l, v, c }) => (
                                   <div key={l}>
                                     <div className="flex justify-between text-[10px] font-mono mb-0.5">
-                                      <span className="text-gray-400">{l}</span>
-                                      <span className="text-white">{v}</span>
+                                      <span className="text-text-secondary">{l}</span>
+                                      <span className="text-text-primary">{v}</span>
                                     </div>
-                                    <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                                    <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
                                       <div className={`h-full ${c} rounded-full`} style={{ width: total > 0 ? `${(v/total)*100}%` : "0%" }} />
                                     </div>
                                   </div>
@@ -1032,9 +1032,9 @@ export default function TickerDeepDivePage() {
                             );
                           })()}
                           <div className={`mt-4 text-sm font-mono font-bold text-center py-2 rounded-xl border ${
-                            recommendations.recommendation_key?.includes("buy") ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                            recommendations.recommendation_key?.includes("sell") ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
-                            "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                            recommendations.recommendation_key?.includes("buy") ? "bg-positive-bg text-positive border-positive/20" :
+                            recommendations.recommendation_key?.includes("sell") ? "bg-negative-bg text-negative border-negative/20" :
+                            "bg-neutral-bg text-neutral border-neutral/20"
                           }`}>
                             {(recommendations.recommendation_key || "hold").toUpperCase()}
                           </div>
@@ -1042,19 +1042,19 @@ export default function TickerDeepDivePage() {
 
                         {/* Target price */}
                         <div className="flex-1">
-                          <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-3">Target Price Range</p>
+                          <p className="text-[10px] font-mono text-text-muted uppercase tracking-widest mb-3">Target Price Range</p>
                           {recommendations.target_high && recommendations.target_low && (
                             <div className="relative h-10 mb-4">
                               <div className="absolute inset-y-0 left-0 right-0 flex items-center">
-                                <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden relative">
+                                <div className="w-full h-2 bg-bg-tertiary rounded-full overflow-hidden relative">
                                   <div
-                                    className="absolute h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-500"
+                                    className="absolute h-full bg-gradient-to-r from-negative via-neutral to-positive"
                                     style={{
                                       left: `${Math.min(100, Math.max(0, ((price - recommendations.target_low) / (recommendations.target_high - recommendations.target_low)) * 100))}%`,
                                       width: "2px",
                                     }}
                                   />
-                                  <div className="h-full bg-blue-500/30 rounded-full" style={{
+                                  <div className="h-full bg-accent-primary/30 rounded-full" style={{
                                     marginLeft: `${Math.min(100, Math.max(0, ((price - recommendations.target_low) / (recommendations.target_high - recommendations.target_low)) * 100))}%`,
                                   }} />
                                 </div>
@@ -1062,10 +1062,10 @@ export default function TickerDeepDivePage() {
                             </div>
                           )}
                           <div className="grid grid-cols-3 gap-3">
-                            <StatCard label="Low Target" value={recommendations.target_low ? `₹${fmt(recommendations.target_low, 0)}` : "–"} color="text-rose-400" />
-                            <StatCard label="Mean Target" value={recommendations.target_mean ? `₹${fmt(recommendations.target_mean, 0)}` : "–"} color="text-blue-400"
+                            <StatCard label="Low Target" value={recommendations.target_low ? `₹${fmt(recommendations.target_low, 0)}` : "–"} color="text-negative" />
+                            <StatCard label="Mean Target" value={recommendations.target_mean ? `₹${fmt(recommendations.target_mean, 0)}` : "–"} color="text-accent-primary"
                               sub={recommendations.target_mean && price ? `${((recommendations.target_mean/price - 1)*100).toFixed(1)}% upside` : ""} />
-                            <StatCard label="High Target" value={recommendations.target_high ? `₹${fmt(recommendations.target_high, 0)}` : "–"} color="text-emerald-400" />
+                            <StatCard label="High Target" value={recommendations.target_high ? `₹${fmt(recommendations.target_high, 0)}` : "–"} color="text-positive" />
                           </div>
                         </div>
                       </div>
@@ -1076,7 +1076,7 @@ export default function TickerDeepDivePage() {
                       <SectionHeader icon={BarChart2} title="Rating Trend (Last 3 Months)" />
                       <div className="overflow-x-auto">
                         <table className="w-full text-[10px] font-mono">
-                          <thead><tr className="text-gray-500 border-b border-white/[0.05]">
+                          <thead><tr className="text-text-muted border-b border-border-primary">
                             <th className="text-left py-2 pr-4">Period</th>
                             <th className="text-right py-2 pr-3">Strong Buy</th>
                             <th className="text-right py-2 pr-3">Buy</th>
@@ -1084,15 +1084,15 @@ export default function TickerDeepDivePage() {
                             <th className="text-right py-2 pr-3">Sell</th>
                             <th className="text-right py-2">Strong Sell</th>
                           </tr></thead>
-                          <tbody className="divide-y divide-white/[0.03]">
+                          <tbody className="divide-y divide-border-primary">
                             {[recommendations.trend].map((t, i) => (
-                              <tr key={i} className="hover:bg-white/[0.02]">
-                                <td className="py-2 pr-4 text-gray-300">Current</td>
-                                <td className="py-2 pr-3 text-right text-emerald-400">{t.strong_buy}</td>
-                                <td className="py-2 pr-3 text-right text-emerald-300">{t.buy}</td>
-                                <td className="py-2 pr-3 text-right text-amber-400">{t.hold}</td>
-                                <td className="py-2 pr-3 text-right text-rose-300">{t.sell}</td>
-                                <td className="py-2 text-right text-rose-500">{t.strong_sell}</td>
+                              <tr key={i} className="hover:bg-bg-tertiary">
+                                <td className="py-2 pr-4 text-text-secondary">Current</td>
+                                <td className="py-2 pr-3 text-right text-positive">{t.strong_buy}</td>
+                                <td className="py-2 pr-3 text-right text-positive">{t.buy}</td>
+                                <td className="py-2 pr-3 text-right text-neutral">{t.hold}</td>
+                                <td className="py-2 pr-3 text-right text-negative">{t.sell}</td>
+                                <td className="py-2 text-right text-negative">{t.strong_sell}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1103,8 +1103,8 @@ export default function TickerDeepDivePage() {
                   </>
                 ) : (
                   <div className="glass-panel p-12 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3" />
-                    <span className="text-xs font-mono text-gray-500">Loading analyst data…</span>
+                    <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin mr-3" />
+                    <span className="text-xs font-mono text-text-muted">Loading analyst data…</span>
                   </div>
                 )}
               </div>
@@ -1123,30 +1123,30 @@ export default function TickerDeepDivePage() {
                       <div className="space-y-3">
                         {news.map((item, i) => (
                           <a key={i} href={item.link} target="_blank" rel="noopener noreferrer"
-                            className="flex gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/10 hover:bg-white/[0.04] transition-all group cursor-pointer">
+                            className="flex gap-3 p-3 rounded-xl bg-bg-tertiary border border-border-primary hover:border-border-subtle hover:bg-bg-elevated transition-all group cursor-pointer">
                             {item.thumbnail && (
                               <img src={item.thumbnail} alt="" className="w-16 h-14 object-cover rounded-lg shrink-0 opacity-80" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs text-white group-hover:text-blue-300 transition-colors line-clamp-2 font-medium">{item.title}</p>
+                              <p className="text-xs text-text-primary group-hover:text-accent-primary transition-colors line-clamp-2 font-medium">{item.title}</p>
                               <div className="flex items-center space-x-2 mt-1.5">
-                                <span className="text-[9px] font-mono text-gray-500">{item.publisher}</span>
-                                <span className="text-[9px] text-gray-700">·</span>
-                                <span className="text-[9px] font-mono text-gray-600">
+                                <span className="text-[9px] font-mono text-text-muted">{item.publisher}</span>
+                                <span className="text-[9px] text-text-muted">·</span>
+                                <span className="text-[9px] font-mono text-text-muted">
                                   {item.published_at ? new Date(item.published_at * 1000).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
                                 </span>
                               </div>
                             </div>
-                            <ExternalLink className="w-3.5 h-3.5 text-gray-700 group-hover:text-blue-400 transition-colors shrink-0 mt-0.5" />
+                            <ExternalLink className="w-3.5 h-3.5 text-text-muted group-hover:text-accent-primary transition-colors shrink-0 mt-0.5" />
                           </a>
                         ))}
                       </div>
                     ) : loadedTabs.has("news") ? (
-                      <p className="text-xs font-mono text-gray-600 text-center py-8">No news available for this ticker.</p>
+                      <p className="text-xs font-mono text-text-muted text-center py-8">No news available for this ticker.</p>
                     ) : (
                       <div className="flex items-center justify-center py-12 space-x-3">
-                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-xs font-mono text-gray-500">Fetching news…</span>
+                        <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs font-mono text-text-muted">Fetching news…</span>
                       </div>
                     )}
                   </div>
