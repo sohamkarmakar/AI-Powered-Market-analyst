@@ -421,7 +421,6 @@ export default function WatchlistPage() {
   const searchParams = useSearchParams();
 
 
-
   // ── localStorage helpers ──────────────────────────────
   const persistWatchlist = useCallback((list: string[]) => {
     if (typeof window !== "undefined") {
@@ -448,7 +447,7 @@ export default function WatchlistPage() {
     if (syms.length === 0) return;
     if (isInitial) setLoadingInit(true);
     try {
-      const res = await fetch(`${API}/api/quotes/batch?symbols=${syms.join(",")}`);
+      const res = await fetch(`${API}/api/quotes/batch?symbols=${encodeURIComponent(syms.join(","))}`);
       if (!res.ok) throw new Error("Batch fetch failed");
       const data = await res.json();
       const incoming: Record<string, Quote> = data.quotes || {};
@@ -606,8 +605,10 @@ export default function WatchlistPage() {
     const term = filter.toLowerCase().trim();
     return watchlist
       .map(sym => {
-        const key = Object.keys(quotes).find(k => normBase(k) === sym) || `${sym}.NS`;
-        return { sym, q: quotes[key] || null };
+        // NSE universe quotes are stored as plain symbol (e.g. "RELIANCE")
+        // Yahoo Finance quotes are stored as "RELIANCE.NS"
+        const q = quotes[sym] || quotes[`${sym}.NS`] || null;
+        return { sym, q };
       })
       .filter(({ sym, q }) => {
         if (term && !sym.toLowerCase().includes(term) && !(q?.name || "").toLowerCase().includes(term)) return false;
@@ -672,7 +673,7 @@ export default function WatchlistPage() {
   const mktStatus = getMarketStatus();
 
   return (
-    <div className="flex flex-col flex-1 h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* ── Indices Strip ────────────────────────────────── */}
       <div className="flex items-center space-x-1 px-4 py-2 border-b border-border-primary bg-bg-primary overflow-x-auto shrink-0">
         <span className={`text-[9px] font-bold font-mono px-2 py-1 rounded ${mktStatus.bg} ${mktStatus.color} mr-2 shrink-0 uppercase tracking-widest`}>
@@ -702,15 +703,16 @@ export default function WatchlistPage() {
         </div>
       </div>
 
-      {/* ── Main Content ─────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden relative">
-        <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${selectedSymbol ? "mr-[420px]" : ""}`}>
+
+      {/* ── Main Content ──────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
+        <div className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all duration-300 ${selectedSymbol ? "mr-[420px]" : ""}`}>
 
           {/* ── Toolbar ─────────────────────────────────── */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border-primary shrink-0 bg-bg-primary/80 backdrop-blur-sm">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border-primary shrink-0 bg-bg-primary/80 backdrop-blur-sm relative z-20">
             <div>
               <h2 className="text-base font-bold text-text-primary tracking-tight">{searchParams.get("sector") || "Watchlist"}</h2>
-              <p className="text-[10px] font-mono text-text-muted">{watchlist.length} STOCKS · LIVE NSE DATA</p>
+              <p className="text-[10px] font-mono text-text-muted">{watchlist.length} STOCKS · LIVE DATA</p>
             </div>
 
             <div className="flex-1 max-w-xs">
@@ -758,8 +760,8 @@ export default function WatchlistPage() {
             </button>
           </div>
 
-          {/* ── Table ───────────────────────────────────── */}
-          <div className="flex-1 overflow-auto">
+          {/* ── Table ──────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto overflow-x-auto">
             <style>{`
               @keyframes flashUp {
                 0%   { background-color: rgba(16,185,129,0.18); }

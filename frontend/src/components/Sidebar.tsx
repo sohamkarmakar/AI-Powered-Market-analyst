@@ -8,7 +8,8 @@ import {
   Star, 
   Bell, 
   Activity,
-  ChevronRight
+  ChevronRight,
+  ScanLine,
 } from "lucide-react";
 import { useTheme } from "./ThemeContext";
 
@@ -27,6 +28,12 @@ export default function Sidebar() {
       href: "/ticker/RELIANCE",
       icon: TrendingUp,
       match: (path: string) => path.startsWith("/ticker"),
+    },
+    {
+      name: "Screener",
+      href: "/intraday-screener",
+      icon: ScanLine,
+      match: (path: string) => path.startsWith("/intraday-screener"),
     },
     {
       name: "Watchlist",

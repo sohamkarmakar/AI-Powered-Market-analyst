@@ -9,7 +9,7 @@ from app.services.yfinance_service import YFinanceService, normalize_symbol
 from app.services.supabase_service import supabase_service
 from app.services.indicators_service import IndicatorsService
 from app.services.gemini_service import gemini_service
-
+from app.services import screener_service
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
@@ -158,16 +158,35 @@ def get_batch_quotes(symbols: str = Query(..., description="Comma-separated symb
     def fetch_one(sym: str) -> Dict[str, Any]:
         try:
             ticker = yf.Ticker(sym)
-            fi = ticker.fast_info
+            # Pull lightweight fundamentals from info only once
+            info = {}
+            try:
+                info = ticker.info or {}
+            except Exception:
+                pass
 
-            price      = getattr(fi, "last_price", None)
-            prev_close = getattr(fi, "previous_close", None)
-            day_high   = getattr(fi, "day_high", None)
-            day_low    = getattr(fi, "day_low", None)
-            year_high  = getattr(fi, "year_high", None)
-            year_low   = getattr(fi, "year_low", None)
-            volume     = getattr(fi, "last_volume", None)
-            market_cap = getattr(fi, "market_cap", None)
+            try:
+                fi = ticker.fast_info
+                price      = getattr(fi, "last_price", None)
+                prev_close = getattr(fi, "previous_close", None)
+                day_high   = getattr(fi, "day_high", None)
+                day_low    = getattr(fi, "day_low", None)
+                year_high  = getattr(fi, "year_high", None)
+                year_low   = getattr(fi, "year_low", None)
+                volume     = getattr(fi, "last_volume", None)
+                market_cap = getattr(fi, "market_cap", None)
+                # Force evaluation to trigger any internal KeyErrors
+                if price is not None: _ = float(price)
+            except Exception:
+                # Fallback to info dict if fast_info is broken
+                price      = info.get("currentPrice") or info.get("regularMarketPrice")
+                prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
+                day_high   = info.get("dayHigh") or info.get("regularMarketDayHigh")
+                day_low    = info.get("dayLow") or info.get("regularMarketDayLow")
+                year_high  = info.get("fiftyTwoWeekHigh")
+                year_low   = info.get("fiftyTwoWeekLow")
+                volume     = info.get("volume") or info.get("regularMarketVolume")
+                market_cap = info.get("marketCap")
 
             change = None
             change_pct = None
@@ -177,13 +196,6 @@ def get_batch_quotes(symbols: str = Query(..., description="Comma-separated symb
 
             def _f(v):
                 return round(float(v), 2) if v is not None else None
-
-            # Pull lightweight fundamentals from info only once
-            info = {}
-            try:
-                info = ticker.info or {}
-            except Exception:
-                pass
 
             return {
                 "symbol":       sym,
@@ -421,6 +433,116 @@ _sectors_cached_time = 0
 @app.get("/api/market/sectors/constituents")
 def get_sector_constituents() -> Dict[str, List[str]]:
     return SECTOR_CONSTITUENTS
+
+_NIFTY_50 = [
+    "ADANIENT.NS", "ADANIPORTS.NS", "APOLLOHOSP.NS", "ASIANPAINT.NS", "AXISBANK.NS",
+    "BAJAJ-AUTO.NS", "BAJFINANCE.NS", "BAJAJFINSV.NS", "BPCL.NS", "BHARTIARTL.NS",
+    "BRITANNIA.NS", "CIPLA.NS", "COALINDIA.NS", "DIVISLAB.NS", "DRREDDY.NS",
+    "EICHERMOT.NS", "GRASIM.NS", "HCLTECH.NS", "HDFCBANK.NS", "HDFCLIFE.NS",
+    "HEROMOTOCO.NS", "HINDALCO.NS", "HINDUNILVR.NS", "ICICIBANK.NS", "ITC.NS",
+    "INDUSINDBK.NS", "INFY.NS", "JSWSTEEL.NS", "KOTAKBANK.NS", "LTIM.NS",
+    "LT.NS", "M&M.NS", "MARUTI.NS", "NTPC.NS", "NESTLEIND.NS",
+    "ONGC.NS", "POWERGRID.NS", "RELIANCE.NS", "SBILIFE.NS", "SHREECEM.NS",
+    "SBIN.NS", "SUNPHARMA.NS", "TCS.NS", "TATACONSUM.NS", "TATAMOTORS.NS",
+    "TATASTEEL.NS", "TECHM.NS", "TITAN.NS", "ULTRACEMCO.NS", "WIPRO.NS"
+]
+
+_NIFTY_NEXT_50 = [
+    "ABB.NS", "AMBUJACEM.NS", "AUROPHARMA.NS", "DMART.NS", "BAJAJHLDNG.NS",
+    "BANKBARODA.NS", "BEL.NS", "BOSCHLTD.NS", "CANBK.NS", "CHOLAFIN.NS",
+    "COLPAL.NS", "DLF.NS", "DABUR.NS", "GAIL.NS", "GODREJCP.NS",
+    "HDFCAMC.NS", "HAVELLS.NS", "HAL.NS", "ICICIGI.NS", "ICICIPRULI.NS",
+    "IOC.NS", "IRCTC.NS", "IRFC.NS", "INDIGO.NS", "JINDALSTEL.NS",
+    "JIOFIN.NS", "KALYANKJIL.NS", "LICI.NS", "LODHA.NS", "MARICO.NS",
+    "MUTHOOTFIN.NS", "NHPC.NS", "PIDILITIND.NS", "PFC.NS", "PNB.NS",
+    "RECLTD.NS", "SBICARD.NS", "SRF.NS", "MOTHERSON.NS", "SHRIRAMFIN.NS",
+    "SIEMENS.NS", "TVSMOTOR.NS", "TRENT.NS", "TORNTPHARM.NS", "TORNTPOWER.NS",
+    "UBL.NS", "MCDOWELL-N.NS", "VBL.NS", "VEDL.NS", "ZOMATO.NS"
+]
+
+_NIFTY_MIDCAP_100 = [
+    "AARTIIND.NS", "ABBOTINDIA.NS", "ALKEM.NS", "ASHOKLEY.NS", "AUBANK.NS",
+    "BANDHANBNK.NS", "BANKINDIA.NS", "BATAINDIA.NS", "BHARATFORG.NS", "BHEL.NS",
+    "BIOCON.NS", "CGPOWER.NS", "COFORGE.NS", "CONCOR.NS", "CROMPTON.NS",
+    "CUMMINSIND.NS", "DALBHARAT.NS", "DEEPAKNTR.NS", "DIXON.NS", "ESCORTS.NS",
+    "FEDERALBNK.NS", "FORTIS.NS", "GMRINFRA.NS", "GLENMARK.NS", "GUJGASLTD.NS",
+    "HINDPETRO.NS", "IDBI.NS", "IDFCFIRSTB.NS", "IGL.NS", "INDHOTEL.NS",
+    "INDUSTOWER.NS", "IPCALAB.NS", "JUBLFOOD.NS", "L&TFH.NS", "LICHSGFIN.NS",
+    "LUPIN.NS", "MRF.NS", "MGL.NS", "MAXHEALTH.NS", "MFSL.NS",
+    "MPHASIS.NS", "NMDC.NS", "NAUKRI.NS", "NAVINFLUOR.NS", "OBEROIRLTY.NS",
+    "OFSS.NS", "OIL.NS", "PIIND.NS", "PAGEIND.NS", "PATANJALI.NS",
+    "PERSISTENT.NS", "PETRONET.NS", "POLYCAB.NS", "PRESTIGE.NS", "RAMCOCEM.NS",
+    "SAIL.NS", "STARHEALTH.NS", "SUPREMEIND.NS", "SYNGENE.NS", "TATACHEM.NS",
+    "TATACOMM.NS", "TATAELXSI.NS", "UPL.NS", "VOLTAS.NS", "YESBANK.NS", "ZEEL.NS"
+]
+
+_NIFTY_MIDCAP_150 = list(set(_NIFTY_MIDCAP_100 + [
+    "ASTRAL.NS", "ABCAPITAL.NS", "APOLLOTYRE.NS", "BALKRISIND.NS", "CANFINHOME.NS",
+    "CHAMBLFERT.NS", "CITYUNION.NS", "COROMANDEL.NS", "CUB.NS", "DEVYANI.NS"
+]))
+
+_NIFTY_SMALLCAP_100 = [
+    "ALOKINDS.NS", "ANGELONE.NS", "APARINDS.NS", "BSE.NS", "BLS.NS",
+    "CASTROLIND.NS", "CDSL.NS", "CENTRALBK.NS", "CESC.NS", "CHALET.NS",
+    "CHENNPETRO.NS", "CIEINDIA.NS", "CITYUNION.NS", "COCHINSHIP.NS", "CREDITACC.NS",
+    "CYIENT.NS", "DATAPATTNS.NS", "EQUITASBNK.NS", "FSL.NS", "GLENMARK.NS",
+    "GRANULES.NS", "HFCL.NS", "HGS.NS", "HUDCO.NS", "INDIACEM.NS",
+    "INDIAMART.NS", "IOB.NS", "IRB.NS", "JBCHEPHARM.NS", "JSL.NS",
+    "KARURVYSYA.NS", "KEC.NS", "KPITTECH.NS", "LATENTVIEW.NS", "MAHABANK.NS",
+    "MANAPPURAM.NS", "MRPL.NS", "NATCOPHARM.NS", "NBCC.NS", "NCC.NS",
+    "POONAWALLA.NS", "PVRINOX.NS", "RBLBANK.NS", "RENUKA.NS", "ROUTE.NS",
+    "SONACOMS.NS", "SUZLON.NS", "TRIDENT.NS", "UCOBANK.NS", "UTIAMC.NS", "WELSPUNIND.NS"
+]
+
+_NIFTY_SMALLCAP_250 = list(set(_NIFTY_SMALLCAP_100 + [
+    "AETHER.NS", "AHLUCONT.NS", "AJANTPHARM.NS", "AKZOINDIA.NS", "ALEMBICLTD.NS",
+    "ALLCARGO.NS", "ALKYLAMINE.NS", "AMARAJABAT.NS", "AMBER.NS", "ANANDRATHI.NS",
+    "ANANTRAJ.NS", "ANURAS.NS", "ANUSHKA.NS", "ANZENALOY.NS", "APC.NS", "APEX.NS", "APEXFROZEN.NS",
+    "APEXMOTORS.NS", "APLAB.NS", "APOLLOEXP.NS", "APPOLLO.NS", "APPOLLOHOS.NS",
+    "APPOTEX.NS", "APTECHT.NS", "APTINJECT.NS", "APW.NS", "ARENTERP.NS",
+    "AREV.NS", "AREX.NS", "ARFIN.NS", "ARGH.NS", "ARGONINDS.NS",
+    "ARIHANTCAP.NS", "ARIHANTMNT.NS", "ARIMPEX.NS", "ARJUNMASON.NS", "ARMAN.NS",
+    "ARMMAN.NS", "AROHAN.NS", "AROGYA.NS", "AROT.NS", "ARROWHEAD.NS",
+    "ARSHIYA.NS", "ARTSON.NS", "ARUNA.NS", "ARUNAHTEL.NS", "ARVINDSMRT.NS",
+    "ARVSMART.NS", "ARYAMAN.NS", "ARYAN.NS", "ASB.NS", "ASCL.NS",
+    "ASHAPURI.NS", "ASHCO.NS", "ASHIANA.NS", "ASHIRVAD.NS", "ASIANTILES.NS",
+    "ASIANSTARS.NS", "ASMAN.NS", "ASMS.NS", "ASMTEC.NS", "ASPIRE.NS",
+    "ASREPS.NS", "ASSEMBLAGE.NS", "ASSETGUARD.NS", "ASSETWORKS.NS", "ATAM.NS",
+    "ATEN.NS", "ATLAS.NS", "ATLASEQUIP.NS", "ATMA.NS", "ATMOSPHE.NS",
+]))
+
+_NIFTY_LARGEMIDCAP_250 = list(set(_NIFTY_50 + _NIFTY_NEXT_50 + _NIFTY_MIDCAP_150))
+
+UNIVERSE_CONSTITUENTS: Dict[str, List[str]] = {
+    "Nifty 50":            _NIFTY_50,
+    "Nifty Next 50":       _NIFTY_NEXT_50,
+    "Nifty 100":           list(set(_NIFTY_50 + _NIFTY_NEXT_50)),
+    "Nifty 200":           list(set(_NIFTY_50 + _NIFTY_NEXT_50 + _NIFTY_MIDCAP_100)),
+    "Nifty Midcap 100":    _NIFTY_MIDCAP_100,
+    "Nifty Midcap 150":    _NIFTY_MIDCAP_150,
+    "Nifty Smallcap 100":  _NIFTY_SMALLCAP_100,
+    "Nifty Smallcap 250":  _NIFTY_SMALLCAP_250,
+    "Nifty LargeMidcap 250": _NIFTY_LARGEMIDCAP_250,
+    "Nifty MidSmallcap 400": list(set(_NIFTY_MIDCAP_150 + _NIFTY_SMALLCAP_250)),
+}
+
+@app.get("/api/universes")
+def list_universes() -> Dict[str, Any]:
+    return {
+        "universes": [
+            {"name": k, "count": len(v)}
+            for k, v in UNIVERSE_CONSTITUENTS.items()
+        ]
+    }
+
+@app.get("/api/universes/{name}/constituents")
+def get_universe_constituents(name: str) -> Dict[str, Any]:
+    decoded = name.replace("%20", " ").replace("+", " ")
+    if decoded not in UNIVERSE_CONSTITUENTS:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Universe '{decoded}' not found")
+    symbols = UNIVERSE_CONSTITUENTS[decoded]
+    return {"name": decoded, "count": len(symbols), "symbols": symbols}
 
 @app.get("/api/market/sectors")
 def get_sector_heatmap() -> Dict[str, Any]:
@@ -1177,3 +1299,148 @@ def get_peers(symbol: str) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=settings.host, port=settings.port, reload=settings.debug)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTRADAY SCREENER ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel
+from typing import Literal
+import uuid
+import time as _time
+
+# In-memory saved scans store (no Supabase dependency for Phase 1)
+_saved_scans: List[Dict[str, Any]] = []
+
+
+class ScreenerCondition(BaseModel):
+    indicator: str                                              # rsi, supertrend, macd, vwap, sma20, ema50, price_change, volume, adx, bb
+    op: str                                                     # gt, lt, gte, lte, eq, crosses_above, crosses_below, flips_to_buy, flips_to_sell, bullish_crossover, bearish_crossover, above_vwap, below_vwap
+    value: Optional[float] = None                               # threshold (not needed for event-based ops)
+    bars: Optional[int]    = 1                                  # for price_change: how many bars back
+
+
+class ScreenerQuery(BaseModel):
+    universe:   str                                             # nifty50, banknifty, niftyit, niftyfmcg
+    timeframe:  str = "5m"                                      # 1m, 5m, 15m, 1h, 1d
+    conditions: List[ScreenerCondition]
+    logic:      Literal["AND", "OR"] = "AND"
+
+
+class SaveScanRequest(BaseModel):
+    name:  str
+    query: ScreenerQuery
+
+
+@app.get("/api/screener/universes")
+def get_screener_universes() -> Dict[str, Any]:
+    """
+    Returns available universe names and their symbol counts.
+    Also returns the full symbol list for each universe.
+    """
+    try:
+        result = {}
+        names = screener_service.list_universes()
+        for name, count in names.items():
+            syms = screener_service.load_universe(name)
+            result[name] = {"count": count, "symbols": syms}
+        return {"universes": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/screener/presets")
+def get_screener_presets() -> Dict[str, Any]:
+    """Returns the list of built-in preset scan queries."""
+    return {"presets": screener_service.PRESETS}
+
+
+@app.post("/api/screener/run")
+def run_screener(query: ScreenerQuery) -> Dict[str, Any]:
+    """
+    Execute a screener scan.
+    Fetches intraday OHLCV for the selected universe, computes indicators,
+    evaluates conditions, and returns matched symbols.
+    """
+    t0 = _time.time()
+
+    # Map timeframe → yfinance period string
+    period_map = {"1m": "1d", "5m": "1d", "15m": "5d", "1h": "5d", "1d": "1mo"}
+    interval = query.timeframe
+    period   = period_map.get(interval, "1d")
+
+    try:
+        symbols = screener_service.load_universe(query.universe)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Batch fetch OHLCV
+    universe_ohlcv = screener_service.fetch_universe_ohlcv(
+        symbols=symbols,
+        interval=interval,
+        period=period,
+        max_workers=10,
+    )
+
+    # Convert Pydantic conditions to plain dicts for the evaluator
+    conditions_dicts = [c.model_dump() for c in query.conditions]
+
+    query_dict = {
+        "universe":   query.universe,
+        "timeframe":  query.timeframe,
+        "conditions": conditions_dicts,
+        "logic":      query.logic,
+    }
+
+    matches = screener_service.evaluate_query(query_dict, universe_ohlcv)
+
+    # Check data freshness
+    ages = screener_service.get_cache_ages(symbols, interval)
+    max_age = max((v for v in ages.values() if v is not None), default=None)
+    ttl = screener_service.CACHE_TTL.get(interval, 60)
+    is_stale = max_age is not None and max_age > ttl * 2
+
+    scan_ms = round((_time.time() - t0) * 1000, 0)
+
+    return {
+        "matches":       matches,
+        "match_count":   len(matches),
+        "total_scanned": len([v for v in universe_ohlcv.values() if v]),
+        "scan_time_ms":  scan_ms,
+        "is_stale":      is_stale,
+        "fetched_at":    _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+        "universe":      query.universe,
+        "timeframe":     query.timeframe,
+        "symbol_count":  len(symbols),
+    }
+
+
+@app.post("/api/screener/save")
+def save_screener_scan(req: SaveScanRequest) -> Dict[str, Any]:
+    """Persist a named scan query for later re-use."""
+    scan = {
+        "id":         str(uuid.uuid4())[:8],
+        "name":       req.name,
+        "query":      req.query.model_dump(),
+        "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+    }
+    _saved_scans.insert(0, scan)
+    return {"status": "saved", "scan": scan}
+
+
+@app.get("/api/screener/saved")
+def get_saved_scans() -> Dict[str, Any]:
+    """Returns all user-saved scan queries."""
+    return {"scans": _saved_scans}
+
+
+@app.delete("/api/screener/saved/{scan_id}")
+def delete_saved_scan(scan_id: str) -> Dict[str, Any]:
+    """Delete a saved scan by ID."""
+    global _saved_scans
+    before = len(_saved_scans)
+    _saved_scans = [s for s in _saved_scans if s["id"] != scan_id]
+    if len(_saved_scans) == before:
+        raise HTTPException(status_code=404, detail=f"Scan '{scan_id}' not found")
+    return {"status": "deleted", "id": scan_id}
+

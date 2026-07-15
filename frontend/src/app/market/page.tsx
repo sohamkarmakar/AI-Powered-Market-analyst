@@ -326,11 +326,13 @@ export default function MarketOverviewPage() {
                   <div key={idx} className="inline-flex items-center space-x-2 text-xs font-mono select-none">
                     <span className="text-text-muted font-semibold uppercase">{item.label}</span>
                     <span className="text-text-primary font-bold">
-                      {item.label.includes("USD") ? `₹${item.price?.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price?.toFixed(2)}` : item.price?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                      {item.price != null
+                        ? (item.label.includes("USD") ? `₹${item.price.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price.toFixed(2)}` : item.price.toLocaleString("en-US", { maximumFractionDigits: 2 }))
+                        : "---"}
                     </span>
-                    <span className={`inline-flex items-center font-bold ${up ? "text-positive" : "text-negative"}`}>
-                      {up ? "+" : ""}{item.change_pct?.toFixed(2)}%
-                      {up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />}
+                    <span className={`inline-flex items-center font-bold ${item.change_pct == null ? "text-text-muted" : up ? "text-positive" : "text-negative"}`}>
+                      {item.change_pct != null ? `${up ? "+" : ""}${item.change_pct.toFixed(2)}%` : "---"}
+                      {item.change_pct != null && (up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />)}
                     </span>
                   </div>
                 );
@@ -343,11 +345,13 @@ export default function MarketOverviewPage() {
                   <div key={`dup-${idx}`} className="inline-flex items-center space-x-2 text-xs font-mono select-none">
                     <span className="text-text-muted font-semibold uppercase">{item.label}</span>
                     <span className="text-text-primary font-bold">
-                      {item.label.includes("USD") ? `₹${item.price?.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price?.toFixed(2)}` : item.price?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                      {item.price != null
+                        ? (item.label.includes("USD") ? `₹${item.price.toFixed(2)}` : item.label.includes("GOLD") || item.label.includes("CRUDE") ? `$${item.price.toFixed(2)}` : item.price.toLocaleString("en-US", { maximumFractionDigits: 2 }))
+                        : "---"}
                     </span>
-                    <span className={`inline-flex items-center font-bold ${up ? "text-positive" : "text-negative"}`}>
-                      {up ? "+" : ""}{item.change_pct?.toFixed(2)}%
-                      {up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />}
+                    <span className={`inline-flex items-center font-bold ${item.change_pct == null ? "text-text-muted" : up ? "text-positive" : "text-negative"}`}>
+                      {item.change_pct != null ? `${up ? "+" : ""}${item.change_pct.toFixed(2)}%` : "---"}
+                      {item.change_pct != null && (up ? <ArrowUpRight className="w-3 h-3 ml-0.5" /> : <ArrowDownRight className="w-3 h-3 ml-0.5" />)}
                     </span>
                   </div>
                 );
