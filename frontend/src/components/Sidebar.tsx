@@ -10,6 +10,7 @@ import {
   Activity,
   ChevronRight,
   ScanLine,
+  Briefcase,
 } from "lucide-react";
 import { useTheme } from "./ThemeContext";
 
@@ -22,6 +23,12 @@ export default function Sidebar() {
       name: "Market Overview",
       href: "/market",
       icon: LayoutDashboard,
+    },
+    {
+      name: "Portfolio",
+      href: "/portfolio",
+      icon: Briefcase,
+      match: (path: string) => path.startsWith("/portfolio"),
     },
     {
       name: "Ticker Deep-Dive",

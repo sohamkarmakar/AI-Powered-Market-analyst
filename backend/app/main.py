@@ -10,6 +10,7 @@ from app.services.supabase_service import supabase_service
 from app.services.indicators_service import IndicatorsService
 from app.services.gemini_service import gemini_service
 from app.services import screener_service
+from app.services import portfolio_service
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
@@ -1331,7 +1332,6 @@ class SaveScanRequest(BaseModel):
     name:  str
     query: ScreenerQuery
 
-
 @app.get("/api/screener/universes")
 def get_screener_universes() -> Dict[str, Any]:
     """
@@ -1444,3 +1444,297 @@ def delete_saved_scan(scan_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Scan '{scan_id}' not found")
     return {"status": "deleted", "id": scan_id}
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PORTFOLIO ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+from fastapi import UploadFile, File
+
+
+class CreatePortfolioRequest(BaseModel):
+    name: str
+    broker_source: Optional[str] = None
+
+
+class ManualHoldingRequest(BaseModel):
+    symbol: str
+    company_name: Optional[str] = None
+    isin: Optional[str] = None
+    quantity: float
+    avg_price: float
+    buy_date: Optional[str] = None  # ISO date string YYYY-MM-DD
+
+
+class ConfirmHoldingsRequest(BaseModel):
+    portfolio_id: str
+    holdings: List[Dict[str, Any]]
+    broker_source: Optional[str] = None
+
+
+class UpdateHoldingRequest(BaseModel):
+    quantity: Optional[float] = None
+    avg_price: Optional[float] = None
+    buy_date: Optional[str] = None
+
+
+@app.get("/api/portfolio")
+def list_portfolios() -> Dict[str, Any]:
+    """List all saved portfolios."""
+    try:
+        portfolios = supabase_service.list_portfolios()
+        return {"portfolios": portfolios, "count": len(portfolios)}
+    except Exception as e:
+        err = str(e)
+        # Detect 'relation does not exist' — schema not yet created
+        if "does not exist" in err or "relation" in err.lower():
+            raise HTTPException(
+                status_code=503,
+                detail="Portfolio tables not found. Run backend/schema_portfolio.sql in your Supabase SQL Editor first."
+            )
+        raise HTTPException(status_code=500, detail=err)
+
+
+@app.post("/api/portfolio")
+def create_portfolio(req: CreatePortfolioRequest) -> Dict[str, Any]:
+    """Create a new empty portfolio."""
+    try:
+        port = supabase_service.create_portfolio(
+            name=req.name,
+            broker_source=req.broker_source,
+        )
+        return {"status": "created", "portfolio": port}
+    except Exception as e:
+        err = str(e)
+        if "does not exist" in err or "relation" in err.lower():
+            raise HTTPException(
+                status_code=503,
+                detail="Portfolio tables not found. Run backend/schema_portfolio.sql in your Supabase SQL Editor first."
+            )
+        raise HTTPException(status_code=500, detail=err)
+
+
+@app.delete("/api/portfolio/{portfolio_id}")
+def delete_portfolio(portfolio_id: str) -> Dict[str, Any]:
+    """Delete a portfolio and all its holdings."""
+    try:
+        supabase_service.delete_portfolio(portfolio_id)
+        return {"status": "deleted", "id": portfolio_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/portfolio/symbol-search")
+def symbol_search(q: str = Query("", description="Search query")) -> Dict[str, Any]:
+    """Autocomplete stock search for manual entry form."""
+    results = portfolio_service.search_symbols(q, limit=10)
+    return {"query": q, "results": results}
+
+
+@app.post("/api/portfolio/upload")
+async def upload_holdings_file(
+    file: UploadFile = File(...),
+    field_map: Optional[str] = Query(None, description="JSON-encoded column mapping for unknown broker files"),
+) -> Dict[str, Any]:
+    """
+    Parse a broker holdings CSV/XLSX file.
+    Returns a preview of parsed + resolved rows — does NOT persist anything.
+    """
+    import json as _json
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    allowed_exts = (".csv", ".xlsx", ".xls")
+    if not any(file.filename.lower().endswith(ext) for ext in allowed_exts):
+        raise HTTPException(status_code=400, detail="Unsupported file type. Please upload CSV or XLSX.")
+
+    try:
+        file_bytes = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read file: {str(e)}")
+
+    parsed_field_map = None
+    if field_map:
+        try:
+            parsed_field_map = _json.loads(field_map)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid field_map JSON")
+
+    result = portfolio_service.parse_uploaded_file(file_bytes, file.filename, parsed_field_map)
+
+    if "error" in result:
+        raise HTTPException(status_code=422, detail=result["error"])
+
+    if result.get("requires_column_mapping"):
+        return result
+
+    resolved_rows = portfolio_service.resolve_parsed_rows(result["parsed_rows"])
+    result["resolved_rows"] = resolved_rows
+    result["unresolved_count"] = sum(1 for r in resolved_rows if r.get("is_unresolved"))
+
+    return result
+
+
+@app.post("/api/portfolio/{portfolio_id}/holdings/confirm")
+def confirm_holdings(
+    portfolio_id: str,
+    req: ConfirmHoldingsRequest,
+) -> Dict[str, Any]:
+    """Persist confirmed (post-preview) holdings to the database."""
+    if not req.holdings:
+        raise HTTPException(status_code=400, detail="No holdings provided")
+
+    for h in req.holdings:
+        if req.broker_source:
+            h["broker_source"] = req.broker_source
+        h["entry_source"] = "upload"
+
+    try:
+        saved = supabase_service.bulk_insert_holdings(portfolio_id, req.holdings)
+        return {
+            "status": "confirmed",
+            "portfolio_id": portfolio_id,
+            "holdings_saved": len(saved),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/portfolio/{portfolio_id}/holdings")
+def get_holdings(portfolio_id: str) -> Dict[str, Any]:
+    """List all holdings for a portfolio."""
+    try:
+        holdings = supabase_service.list_holdings(portfolio_id)
+        return {"portfolio_id": portfolio_id, "holdings": holdings, "count": len(holdings)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/portfolio/{portfolio_id}/holdings/manual")
+def add_manual_holding(
+    portfolio_id: str,
+    holdings: List[ManualHoldingRequest],
+) -> Dict[str, Any]:
+    """Add one or more holdings manually."""
+    saved = []
+    for req in holdings:
+        sym = req.symbol.strip().upper()
+        if "." not in sym:
+            sym = sym + ".NS"
+
+        holding_data = {
+            "symbol":       sym,
+            "company_name": req.company_name or sym.replace(".NS", ""),
+            "isin":         req.isin,
+            "quantity":     req.quantity,
+            "avg_price":    req.avg_price,
+            "buy_date":     req.buy_date,
+            "entry_source": "manual",
+        }
+        try:
+            saved_holding = supabase_service.insert_holding(portfolio_id, holding_data)
+            saved.append(saved_holding)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": "added",
+        "portfolio_id": portfolio_id,
+        "holdings_added": len(saved),
+        "holdings": saved,
+    }
+
+
+@app.put("/api/portfolio/{portfolio_id}/holdings/{holding_id}")
+def update_holding(
+    portfolio_id: str,
+    holding_id: str,
+    req: UpdateHoldingRequest,
+) -> Dict[str, Any]:
+    """Inline-edit a holding's quantity, avg price, or buy date."""
+    updates = req.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    try:
+        updated = supabase_service.update_holding(holding_id, updates)
+        return {"status": "updated", "holding": updated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/portfolio/{portfolio_id}/holdings/{holding_id}")
+def delete_holding(portfolio_id: str, holding_id: str) -> Dict[str, Any]:
+    """Delete a single holding."""
+    try:
+        supabase_service.delete_holding(holding_id)
+        return {"status": "deleted", "id": holding_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# In-process analysis cache keyed by portfolio_id
+_portfolio_analysis_cache: Dict[str, Dict] = {}
+_PORTFOLIO_CACHE_TTL = 60  # seconds
+
+
+@app.get("/api/portfolio/{portfolio_id}/analysis")
+def get_portfolio_analysis(portfolio_id: str, refresh: bool = False) -> Dict[str, Any]:
+    """
+    Compute and return full portfolio analysis.
+    Caches results for 60 seconds to avoid hammering Yahoo Finance.
+    """
+    import time as _t
+
+    cached = _portfolio_analysis_cache.get(portfolio_id)
+    if cached and not refresh and (_t.time() - cached["fetched_at"]) < _PORTFOLIO_CACHE_TTL:
+        return cached["result"]
+
+    holdings = supabase_service.list_holdings(portfolio_id)
+    if not holdings:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No holdings found for portfolio '{portfolio_id}'. Upload or add holdings first.",
+        )
+
+    try:
+        analysis = portfolio_service.compute_portfolio_analysis(holdings)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+    result = {"portfolio_id": portfolio_id, **analysis}
+    _portfolio_analysis_cache[portfolio_id] = {"result": result, "fetched_at": _t.time()}
+    return result
+
+
+@app.post("/api/portfolio/{portfolio_id}/narrative/generate")
+def generate_portfolio_narrative(portfolio_id: str) -> Dict[str, Any]:
+    """Generate an AI narrative for the portfolio and cache it in Supabase."""
+    holdings = supabase_service.list_holdings(portfolio_id)
+    if not holdings:
+        raise HTTPException(status_code=404, detail="No holdings found for this portfolio.")
+
+    try:
+        analysis = portfolio_service.compute_portfolio_analysis(holdings)
+        narrative = gemini_service.generate_portfolio_narrative(analysis)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Narrative generation failed: {str(e)}")
+
+    try:
+        supabase_service.upsert_portfolio_narrative(portfolio_id, narrative)
+    except Exception:
+        pass  # Don't fail the request if DB save fails
+
+    return {"status": "generated", "portfolio_id": portfolio_id, "narrative": narrative}
+
+
+@app.get("/api/portfolio/{portfolio_id}/narrative")
+def get_portfolio_narrative(portfolio_id: str) -> Dict[str, Any]:
+    """Fetch the latest cached AI narrative for a portfolio."""
+    row = supabase_service.get_latest_portfolio_narrative(portfolio_id)
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail="No narrative found. Call POST /narrative/generate first.",
+        )
+    return row

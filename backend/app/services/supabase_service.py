@@ -210,4 +210,169 @@ class SupabaseService:
             logger.error(f"Supabase get_all_tickers error: {str(e)}")
             raise e
 
+    # ─────────────────────────────────────────────────────────────
+    # PORTFOLIO METHODS
+    # ─────────────────────────────────────────────────────────────
+
+    def create_portfolio(self, name: str, broker_source: Optional[str] = None) -> Dict[str, Any]:
+        if not self.client:
+            logger.warning("Supabase not configured. Returning mock portfolio.")
+            import uuid
+            return {"id": str(uuid.uuid4()), "name": name, "broker_source": broker_source}
+        try:
+            data = {"name": name, "broker_source": broker_source}
+            res = self.client.table("portfolios").insert(data).execute()
+            return res.data[0] if res.data else data
+        except Exception as e:
+            logger.error(f"Supabase create_portfolio error: {str(e)}")
+            raise e
+
+    def list_portfolios(self) -> List[Dict[str, Any]]:
+        if not self.client:
+            return []
+        try:
+            res = self.client.table("portfolios").select("*").order("created_at", desc=True).execute()
+            return res.data or []
+        except Exception as e:
+            logger.error(f"Supabase list_portfolios error: {str(e)}")
+            return []
+
+    def get_portfolio(self, portfolio_id: str) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        try:
+            res = self.client.table("portfolios").select("*").eq("id", portfolio_id).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Supabase get_portfolio error: {str(e)}")
+            return None
+
+    def update_portfolio(self, portfolio_id: str, name: str) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        try:
+            res = self.client.table("portfolios").update({"name": name}).eq("id", portfolio_id).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Supabase update_portfolio error: {str(e)}")
+            raise e
+
+    def delete_portfolio(self, portfolio_id: str) -> bool:
+        if not self.client:
+            return False
+        try:
+            self.client.table("portfolios").delete().eq("id", portfolio_id).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Supabase delete_portfolio error: {str(e)}")
+            raise e
+
+    def bulk_insert_holdings(self, portfolio_id: str, holdings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if not self.client:
+            logger.warning("Supabase not configured. Skipping bulk_insert_holdings.")
+            return holdings
+        try:
+            records = []
+            for h in holdings:
+                records.append({
+                    "portfolio_id": portfolio_id,
+                    "symbol":       h.get("symbol") or h.get("resolved_symbol"),
+                    "isin":         h.get("isin"),
+                    "company_name": h.get("company_name") or h.get("resolved_name"),
+                    "quantity":     float(h["quantity"]),
+                    "avg_price":    float(h["avg_price"]),
+                    "buy_date":     h.get("buy_date"),
+                    "entry_source": h.get("entry_source", "upload"),
+                    "broker_source": h.get("broker_source"),
+                })
+            res = self.client.table("holdings").insert(records).execute()
+            return res.data or []
+        except Exception as e:
+            logger.error(f"Supabase bulk_insert_holdings error: {str(e)}")
+            raise e
+
+    def list_holdings(self, portfolio_id: str) -> List[Dict[str, Any]]:
+        if not self.client:
+            return []
+        try:
+            res = self.client.table("holdings").select("*").eq("portfolio_id", portfolio_id).order("created_at").execute()
+            return res.data or []
+        except Exception as e:
+            logger.error(f"Supabase list_holdings error: {str(e)}")
+            return []
+
+    def insert_holding(self, portfolio_id: str, holding: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.client:
+            import uuid
+            return {"id": str(uuid.uuid4()), **holding}
+        try:
+            record = {
+                "portfolio_id": portfolio_id,
+                "symbol":       holding.get("symbol"),
+                "isin":         holding.get("isin"),
+                "company_name": holding.get("company_name"),
+                "quantity":     float(holding["quantity"]),
+                "avg_price":    float(holding["avg_price"]),
+                "buy_date":     holding.get("buy_date"),
+                "entry_source": holding.get("entry_source", "manual"),
+                "broker_source": holding.get("broker_source"),
+            }
+            res = self.client.table("holdings").insert(record).execute()
+            return res.data[0] if res.data else record
+        except Exception as e:
+            logger.error(f"Supabase insert_holding error: {str(e)}")
+            raise e
+
+    def update_holding(self, holding_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        try:
+            allowed = {k: updates[k] for k in ["quantity", "avg_price", "buy_date", "symbol", "company_name"] if k in updates}
+            if "quantity" in allowed:
+                allowed["quantity"] = float(allowed["quantity"])
+            if "avg_price" in allowed:
+                allowed["avg_price"] = float(allowed["avg_price"])
+            res = self.client.table("holdings").update(allowed).eq("id", holding_id).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Supabase update_holding error: {str(e)}")
+            raise e
+
+    def delete_holding(self, holding_id: str) -> bool:
+        if not self.client:
+            return False
+        try:
+            self.client.table("holdings").delete().eq("id", holding_id).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Supabase delete_holding error: {str(e)}")
+            raise e
+
+    def upsert_portfolio_narrative(self, portfolio_id: str, narrative: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.client:
+            return {"portfolio_id": portfolio_id, "narrative": narrative}
+        try:
+            record = {"portfolio_id": portfolio_id, "narrative": narrative}
+            res = self.client.table("portfolio_ai_narratives").insert(record).execute()
+            return res.data[0] if res.data else record
+        except Exception as e:
+            logger.error(f"Supabase upsert_portfolio_narrative error: {str(e)}")
+            raise e
+
+    def get_latest_portfolio_narrative(self, portfolio_id: str) -> Optional[Dict[str, Any]]:
+        if not self.client:
+            return None
+        try:
+            res = (self.client.table("portfolio_ai_narratives")
+                   .select("*")
+                   .eq("portfolio_id", portfolio_id)
+                   .order("generated_at", desc=True)
+                   .limit(1)
+                   .execute())
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Supabase get_latest_portfolio_narrative error: {str(e)}")
+            return None
+
+
 supabase_service = SupabaseService()

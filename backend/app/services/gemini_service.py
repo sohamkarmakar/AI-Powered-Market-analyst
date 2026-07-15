@@ -38,6 +38,14 @@ class MarketPulseSchema(BaseModel):
     market_drivers: List[str] = Field(description="Core macroeconomic or technical factors driving the market")
     macro_trends: List[str] = Field(description="Macro economic trends to watch")
 
+class PortfolioNarrativeSchema(BaseModel):
+    health_summary: str = Field(description="Plain-English 2-3 sentence portfolio health overview, 80-120 words")
+    key_observations: List[str] = Field(description="3-5 specific, actionable observations about this portfolio (allocation, risk, performance)")
+    concentration_warnings: List[str] = Field(description="Specific warnings about over-concentration in individual stocks or sectors (empty list if none)")
+    top_opportunities: List[str] = Field(description="2-3 holdings that look technically or fundamentally strong based on the data")
+    watch_list: List[str] = Field(description="2-3 holdings to watch — underperforming, overbought, or near 52-week lows")
+    sentiment: str = Field(description="Overall portfolio sentiment: STRONG, BALANCED, CAUTIOUS, or AT_RISK")
+
 # --- Gemini Service Implementation ---
 
 class GeminiService:
@@ -311,6 +319,86 @@ class GeminiService:
                     "Adoption of deep learning automation across traditional industries."
                 ]
             }
+        elif schema_class == PortfolioNarrativeSchema:
+            return {
+                "health_summary": "Your portfolio is broadly diversified across 8 sectors with 15 holdings. The IT & Software sector carries the heaviest weight at 32%, driven primarily by TCS and Infosys. Overall unrealised P&L is positive. No critical concentration alerts at this time.",
+                "key_observations": [
+                    "IT & Software is your largest sector allocation at 32% — consider monitoring for sector rotation risks.",
+                    "Three holdings (TCS, INFY, RELIANCE) together account for over 45% of total portfolio value.",
+                    "Financial Services sector provides healthy diversification at 22% with a mix of banks and NBFCs.",
+                    "Small-cap exposure is limited to under 5%, reducing volatility risk."
+                ],
+                "concentration_warnings": [
+                    "TCS alone accounts for 18% of the portfolio — above the recommended 15% single-stock threshold."
+                ],
+                "top_opportunities": [
+                    "HDFCBANK: RSI at 45 — technically neutral, fundamentally strong with improving NIMs.",
+                    "SUNPHARMA: Near 52-week high with positive earnings momentum in US generics."
+                ],
+                "watch_list": [
+                    "WIPRO: RSI approaching overbought territory at 68, monitor for potential pullback.",
+                    "INDUSINDBK: Trading near 52-week low — watch for signs of reversal or further weakness."
+                ],
+                "sentiment": "BALANCED"
+            }
         return {}
+
+    def generate_portfolio_narrative(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate a plain-English AI narrative summary for a portfolio.
+        Uses the same cached pattern as generate_rich_market_pulse.
+        """
+        summary = analysis_data.get("summary", {})
+        holdings = analysis_data.get("holdings", [])[:10]  # Top 10 by weight
+        sector_alloc = analysis_data.get("sector_allocation", [])
+        conc_flags = analysis_data.get("concentration_flags", [])
+        div_score = analysis_data.get("diversification_score", "N/A")
+
+        # Build concise holdings table for the prompt
+        holdings_text = "\n".join([
+            f"  - {h.get('name', h.get('symbol'))}: weight {h.get('weight_pct', 0):.1f}%, "
+            f"P&L {h.get('pnl_pct', 'N/A')}%, RSI {h.get('rsi', 'N/A')}, "
+            f"sector: {h.get('sector', 'N/A')}"
+            for h in holdings
+        ])
+
+        sector_text = "\n".join([
+            f"  - {s['sector']}: {s['weight_pct']:.1f}%"
+            for s in sector_alloc[:6]
+        ])
+
+        conc_text = "\n".join([
+            f"  - {c['type'].upper()}: {c['label']} at {c['weight']:.1f}% (threshold: {c['threshold']}%)"
+            for c in conc_flags
+        ]) or "  None detected."
+
+        prompt = f"""
+You are a portfolio analyst reviewing an Indian equity portfolio for a retail investor.
+Provide a structured JSON analysis based on the data below.
+
+PORTFOLIO SUMMARY:
+- Total invested: ₹{summary.get('total_invested', 0):,.0f}
+- Current value:  ₹{summary.get('total_current', 0):,.0f}
+- Total P&L:      ₹{summary.get('total_pnl_abs', 0):,.0f} ({summary.get('total_pnl_pct', 0):.2f}%)
+- Holdings count: {summary.get('num_holdings', 0)}
+- Sectors:        {summary.get('num_sectors', 0)}
+- Diversification score: {div_score}/100 (higher = more diversified)
+
+TOP HOLDINGS (by weight):
+{holdings_text}
+
+SECTOR ALLOCATION:
+{sector_text}
+
+CONCENTRATION ALERTS:
+{conc_text}
+
+Write in plain, conversational English suitable for a retail investor.
+Be specific — mention actual stock names and percentages from the data.
+Keep health_summary to 80-120 words.
+Do NOT fabricate data not present above.
+"""
+        return self._call_gemini(prompt, PortfolioNarrativeSchema)
+
 
 gemini_service = GeminiService()
