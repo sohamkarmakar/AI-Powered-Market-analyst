@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import TopBar from "@/components/TopBar";
 import { useTheme } from "@/components/ThemeContext";
 import Link from "next/link";
 import {
@@ -143,7 +144,7 @@ const StockTable = ({ title, data, type }: { title: string; data: any[]; type: "
           </table>
         </div>
       </div>
-    </div>
+      </div>
   );
 };
 
@@ -297,7 +298,34 @@ export default function MarketOverviewPage() {
   const mktStatus = getMarketStatus();
 
   return (
-    <div className="p-6 space-y-6 flex-1">
+    <div className="flex-1 flex flex-col min-h-screen">
+      <TopBar
+        title="Market Overview"
+        subtitle="Indian Equity Health & Live Market Data"
+        icon={<Globe className="w-4 h-4 text-accent-primary" />}
+        actions={
+          <div className="flex items-center gap-2">
+            {mktStatus && (
+              <div className={`hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-mono font-semibold ${mktStatus.bg} ${mktStatus.color}`}>
+                <span className="relative flex h-2 w-2">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${mktStatus.dot} opacity-75`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${mktStatus.dot}`} />
+                </span>
+                <span>{mktStatus.label}</span>
+              </div>
+            )}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 hover:border-accent-primary/40 text-accent-primary rounded-xl text-xs font-semibold transition-all duration-200 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{refreshing ? "Refreshing…" : "Refresh"}</span>
+            </button>
+          </div>
+        }
+      />
+      <div className="p-4 sm:p-6 space-y-6 flex-1">
       {/* ── Global Ticker Tape ────────────────────────── */}
       {tapeData && tapeData.length > 0 && (
         <div
@@ -361,47 +389,7 @@ export default function MarketOverviewPage() {
         </div>
       )}
 
-      {/* ── Page Header ─────────────────────────────── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-text-primary">Market Overview</h2>
-          <p className="text-sm text-text-muted font-mono">INDIAN EQUITY HEALTH & LIVE MARKET DATA</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Market status pill */}
-          {mktStatus && (
-            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border border-border-primary text-xs font-mono font-semibold ${mktStatus.bg} ${mktStatus.color}`}>
-              <span className={`relative flex h-2 w-2`}>
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${mktStatus.dot} opacity-75`} />
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${mktStatus.dot}`} />
-              </span>
-              <span>{mktStatus.label}</span>
-            </div>
-          )}
-
-          {/* Last updated */}
-          {lastUpdated && mounted && (
-            <div className="flex items-center space-x-1.5 text-[10px] font-mono text-text-muted">
-              <Clock className="w-3 h-3" />
-              <span>Updated {lastUpdated.toLocaleTimeString("en-IN")}</span>
-            </div>
-          )}
-
-          {/* Theme switcher */}
-          <ThemeSwitcher />
-
-          {/* Refresh button */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center space-x-2 px-4 py-2 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 hover:border-accent-primary/40 text-accent-primary rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
-          </button>
-        </div>
-      </div>
+      {/* ── Page Header removed — now in TopBar ──────────────── */}
 
       {/* ── Live Indices Bar ─────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -623,6 +611,7 @@ export default function MarketOverviewPage() {
         <StockTable title="Top Gainers" data={gainers} type="gainers" />
         <StockTable title="Top Losers" data={losers} type="losers" />
         <StockTable title="Most Active by Volume" data={active} type="active" />
+      </div>
       </div>
     </div>
   );

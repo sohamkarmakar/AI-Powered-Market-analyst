@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import TopBar from "@/components/TopBar";
 import {
   Plus, X, Play, Save, RefreshCw, Trash2, ChevronDown,
   ChevronUp, ExternalLink, Star, Bell, Wifi, WifiOff,
@@ -381,7 +382,6 @@ export default function IntradayScreenerPage() {
     setSavedScans(prev => prev.filter(s => s.id !== id));
   }
 
-  // ── Sort helpers ──────────────────────────────────────────────────────────
   function toggleSort(field: typeof sortBy) {
     if (sortBy === field) setSortDir(d => d === "desc" ? "asc" : "desc");
     else { setSortBy(field); setSortDir("desc"); }
@@ -402,7 +402,6 @@ export default function IntradayScreenerPage() {
     return sortDir === "desc" ? <ChevronDown className="w-3 h-3 text-accent-primary" /> : <ChevronUp className="w-3 h-3 text-accent-primary" />;
   }
 
-  // ── Time formatting ───────────────────────────────────────────────────────
   function fmtTime(iso: string | null): string {
     if (!iso) return "—";
     try {
@@ -418,101 +417,56 @@ export default function IntradayScreenerPage() {
     return String(n);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
-
   const isMarketHours = (() => {
     const now = new Date();
     const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
     const h = ist.getHours(), m = ist.getMinutes();
     const mins = h * 60 + m;
     const day = ist.getDay();
-    return day >= 1 && day <= 5 && mins >= 555 && mins <= 930; // 9:15–15:30
+    return day >= 1 && day <= 5 && mins >= 555 && mins <= 930;
   })();
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-bg-primary">
-      {/* ── PAGE HEADER ──────────────────────────────────────────────────── */}
-      <div className="border-b border-border-primary bg-bg-secondary/60 backdrop-blur px-6 py-4 sticky top-0 z-30">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          {/* Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
-              <ScanLine className="w-5 h-5 text-accent-primary" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-text-primary flex items-center gap-2">
-                Intraday Screener
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full border ${
-                  isMarketHours
-                    ? "bg-positive/10 border-positive/20 text-positive"
-                    : "bg-neutral-bg border-neutral/20 text-neutral"
-                }`}>
-                  {isMarketHours ? "● LIVE" : "○ CLOSED"}
-                </span>
-              </h1>
-              <p className="text-[11px] text-text-muted font-mono">
-                {result
-                  ? `${result.match_count} match${result.match_count !== 1 ? "es" : ""} from ${result.total_scanned} stocks scanned · ${result.scan_time_ms}ms`
-                  : "Query builder · Run against Nifty 50, Bank Nifty, Nifty IT"}
-              </p>
-            </div>
-          </div>
-
-          {/* Controls */}
+      {/* ── TOP BAR ── */}
+      <TopBar
+        title="Intraday Screener"
+        subtitle={result ? `${result.match_count} match${result.match_count !== 1 ? "es" : ""} from ${result.total_scanned} stocks · ${result.scan_time_ms}ms` : "Query builder · Nifty 50, Bank Nifty, Nifty IT"}
+        icon={<ScanLine className="w-4 h-4 text-accent-primary" />}
+        actions={
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Stale badge */}
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+              isMarketHours ? "bg-positive/10 border-positive/20 text-positive" : "bg-neutral-bg border-neutral/20 text-neutral"
+            }`}>
+              {isMarketHours ? "● LIVE" : "○ CLOSED"}
+            </span>
             {result?.is_stale && (
-              <span className="flex items-center gap-1 text-[10px] font-mono text-neutral border border-neutral/20 bg-neutral/5 px-2 py-1 rounded-full">
-                <AlertTriangle className="w-3 h-3" /> Stale data
+              <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-neutral border border-neutral/20 bg-neutral/5 px-2 py-1 rounded-full">
+                <AlertTriangle className="w-3 h-3" /> Stale
               </span>
             )}
-
-            {/* Last scan time */}
-            {result && (
-              <span className="flex items-center gap-1 text-[10px] font-mono text-text-muted">
-                <Clock className="w-3 h-3" />
-                {fmtTime(result.fetched_at)}
-              </span>
-            )}
-
-            {/* Auto-refresh selector */}
             <div className="flex items-center gap-1 bg-bg-elevated border border-border-primary rounded-lg p-1">
               <RefreshCw className={`w-3.5 h-3.5 ml-1 ${refreshInterval > 0 ? "text-accent-primary animate-spin" : "text-text-muted"}`} style={{ animationDuration: "3s" }} />
               {REFRESH_INTERVALS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setRefreshInterval(opt.value)}
+                <button key={opt.value} onClick={() => setRefreshInterval(opt.value)}
                   className={`px-2 py-0.5 text-[11px] font-mono rounded transition-all ${
-                    refreshInterval === opt.value
-                      ? "bg-accent-primary text-white"
-                      : "text-text-muted hover:text-text-primary"
-                  }`}
-                >
-                  {opt.label}
-                </button>
+                    refreshInterval === opt.value ? "bg-accent-primary text-white" : "text-text-muted hover:text-text-primary"
+                  }`}>{opt.label}</button>
               ))}
               {refreshInterval > 0 && countdown > 0 && (
                 <span className="text-[10px] font-mono text-accent-primary pr-1">{countdown}s</span>
               )}
             </div>
-
-            {/* Saved scans toggle */}
-            <button
-              onClick={() => setShowSaved(v => !v)}
+            <button onClick={() => setShowSaved(v => !v)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                showSaved
-                  ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
-                  : "border-border-primary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
-              }`}
-            >
+                showSaved ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary" : "border-border-primary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+              }`}>
               <Save className="w-3.5 h-3.5" />
-              Saved {savedScans.length > 0 && `(${savedScans.length})`}
+              <span className="hidden sm:inline">Saved {savedScans.length > 0 && `(${savedScans.length})`}</span>
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}

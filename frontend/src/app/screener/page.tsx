@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -11,6 +11,7 @@ import {
   Pencil, GripVertical, Trash2, CheckCircle2
 } from "lucide-react";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
+import TopBar from "@/components/TopBar";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -397,7 +398,7 @@ function EditPanel({
   );
 }
 
-export default function WatchlistPage() {
+function WatchlistContent() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [indices, setIndices] = useState<IndexData[]>([]);
@@ -674,6 +675,22 @@ export default function WatchlistPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <TopBar
+        title="Watchlist"
+        subtitle="Live market data · Auto-refreshes every 10s"
+        icon={<Star className="w-4 h-4 text-accent-primary" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-bold font-mono px-2 py-1 rounded ${mktStatus.bg} ${mktStatus.color} uppercase tracking-widest`}>
+              {mktStatus.label}
+            </span>
+            {online
+              ? <span className="hidden sm:flex items-center gap-1 text-[9px] font-mono text-emerald-500"><span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" /></span>LIVE</span>
+              : <span className="hidden sm:flex items-center gap-1 text-[9px] font-mono text-negative"><WifiOff className="w-3 h-3" /> OFFLINE</span>
+            }
+          </div>
+        }
+      />
       {/* ── Indices Strip ────────────────────────────────── */}
       <div className="flex items-center space-x-1 px-4 py-2 border-b border-border-primary bg-bg-primary overflow-x-auto shrink-0">
         <span className={`text-[9px] font-bold font-mono px-2 py-1 rounded ${mktStatus.bg} ${mktStatus.color} mr-2 shrink-0 uppercase tracking-widest`}>
@@ -960,5 +977,13 @@ export default function WatchlistPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function WatchlistPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex flex-col min-h-screen bg-bg-primary items-center justify-center"><div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+      <WatchlistContent />
+    </Suspense>
   );
 }

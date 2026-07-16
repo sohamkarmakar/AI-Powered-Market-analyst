@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Briefcase, Upload, PlusCircle, RefreshCw, ChevronDown, Trash2 } from "lucide-react";
-import ThemeSwitcher from "@/components/ThemeSwitcher";
+import { Briefcase, Upload, PlusCircle, ChevronDown, Trash2 } from "lucide-react";
+import TopBar from "@/components/TopBar";
 import UploadWidget from "@/components/portfolio/UploadWidget";
 import ManualEntryForm from "@/components/portfolio/ManualEntryForm";
 import PreviewTable from "@/components/portfolio/PreviewTable";
@@ -153,99 +153,63 @@ export default function PortfolioPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-bg-primary">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-xl px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent-primary/20 flex items-center justify-center">
-              <Briefcase className="w-4 h-4 text-accent-primary" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-text-primary">Portfolio</h1>
-              <p className="text-xs text-text-muted">Holdings Analysis & Insights</p>
-            </div>
-          </div>
-
-          {/* Portfolio Selector */}
-          {portfolios.length > 0 && (
-            <div className="relative ml-4">
-              <button
-                onClick={() => setShowPortfolioDropdown(!showPortfolioDropdown)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-primary text-sm text-text-primary hover:border-accent-primary/40 transition-all"
-              >
-                <span className="max-w-32 truncate">{activePortfolio?.name || "Select Portfolio"}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
-              </button>
-              {showPortfolioDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-bg-elevated border border-border-primary rounded-xl shadow-xl z-50 py-1 overflow-hidden">
-                  {portfolios.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between px-3 py-2 hover:bg-bg-tertiary cursor-pointer group"
-                    >
-                      <button
-                        className="flex-1 text-left text-sm text-text-primary"
-                        onClick={() => handleSelectPortfolio(p)}
-                      >
-                        <div className="font-medium">{p.name}</div>
-                        {p.broker_source && (
-                          <div className="text-xs text-text-muted capitalize">{p.broker_source}</div>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleDeletePortfolio(p.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-negative hover:bg-negative-bg transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
+      {/* ── TopBar ── */}
+      <TopBar
+        title="Portfolio"
+        subtitle="Holdings Analysis & Insights"
+        icon={<Briefcase className="w-4 h-4 text-accent-primary" />}
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Portfolio selector */}
+            {portfolios.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowPortfolioDropdown(!showPortfolioDropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-primary text-sm text-text-primary hover:border-accent-primary/40 transition-all"
+                >
+                  <span className="max-w-28 truncate">{activePortfolio?.name || "Select"}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
+                </button>
+                {showPortfolioDropdown && (
+                  <div className="absolute top-full right-0 mt-1 w-60 bg-bg-elevated border border-border-primary rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                    {portfolios.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between px-3 py-2 hover:bg-bg-tertiary group">
+                        <button className="flex-1 text-left text-sm text-text-primary" onClick={() => handleSelectPortfolio(p)}>
+                          <div className="font-medium">{p.name}</div>
+                          {p.broker_source && <div className="text-xs text-text-muted capitalize">{p.broker_source}</div>}
+                        </button>
+                        <button onClick={() => handleDeletePortfolio(p.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded text-negative hover:bg-negative-bg transition-all">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="border-t border-border-primary mt-1 pt-1">
+                      <button onClick={() => { setShowCreateModal(true); setShowPortfolioDropdown(false); }} className="w-full text-left px-3 py-2 text-sm text-accent-primary hover:bg-bg-tertiary flex items-center gap-2">
+                        <PlusCircle className="w-3.5 h-3.5" /> New Portfolio
                       </button>
                     </div>
-                  ))}
-                  <div className="border-t border-border-primary mt-1 pt-1">
-                    <button
-                      onClick={() => { setShowCreateModal(true); setShowPortfolioDropdown(false); }}
-                      className="w-full text-left px-3 py-2 text-sm text-accent-primary hover:bg-bg-tertiary flex items-center gap-2"
-                    >
-                      <PlusCircle className="w-3.5 h-3.5" />
-                      New Portfolio
-                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {activePortfolio && view === "dashboard" && (
-            <>
-              <button
-                onClick={() => setEntryMode("upload")}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary border border-border-primary hover:border-accent-primary/40 rounded-lg transition-all"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Upload
+                )}
+              </div>
+            )}
+            {activePortfolio && view === "dashboard" && (
+              <>
+                <button onClick={() => setEntryMode("upload")} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border-primary hover:border-accent-primary/40 rounded-lg transition-all">
+                  <Upload className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Upload</span>
+                </button>
+                <button onClick={() => setEntryMode("manual")} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border-primary hover:border-accent-primary/40 rounded-lg transition-all">
+                  <PlusCircle className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Add</span>
+                </button>
+              </>
+            )}
+            {!activePortfolio && portfolios.length === 0 && (
+              <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-accent-primary rounded-lg hover:bg-accent-primary/90 transition-all shadow-lg shadow-accent-primary/20">
+                <PlusCircle className="w-3.5 h-3.5" /> New Portfolio
               </button>
-              <button
-                onClick={() => setEntryMode("manual")}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary border border-border-primary hover:border-accent-primary/40 rounded-lg transition-all"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                Add
-              </button>
-            </>
-          )}
-          {!activePortfolio && portfolios.length === 0 && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-accent-primary rounded-lg hover:bg-accent-primary/90 transition-all shadow-lg shadow-accent-primary/20"
-            >
-              <PlusCircle className="w-4 h-4" />
-              New Portfolio
-            </button>
-          )}
-          <ThemeSwitcher />
-        </div>
-      </header>
+            )}
+          </div>
+        }
+      />
 
       {/* Create Portfolio Modal */}
       {showCreateModal && (

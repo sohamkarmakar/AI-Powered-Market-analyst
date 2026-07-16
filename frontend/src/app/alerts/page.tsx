@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Info
 } from "lucide-react";
+import TopBar from "@/components/TopBar";
 
 interface SystemAlert {
   id: string;
@@ -113,15 +114,20 @@ export default function AlertsFeedPage() {
   }, [alerts, filterSeverity]);
 
   return (
-    <div className="p-8 space-y-8 flex-1 bg-bg-primary">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-text-primary">Alerts Feed</h2>
-          <p className="text-sm text-text-muted font-mono">AUTOMATED TECHNICAL MOMENTUM MONITORS</p>
-        </div>
-        <Bell className="w-5 h-5 text-text-muted" />
-      </div>
+    <div className="flex-1 flex flex-col min-h-screen bg-bg-primary">
+      <TopBar
+        title="Alerts Feed"
+        subtitle="Automated Technical Momentum Monitors"
+        icon={<Bell className="w-4 h-4 text-accent-primary" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-text-muted">
+              {alerts.filter(a => !a.acknowledged).length} unread
+            </span>
+          </div>
+        }
+      />
+      <div className="p-4 sm:p-8 space-y-6 flex-1">
 
       {/* Connection Notice */}
       {usingMock && (
@@ -237,6 +243,7 @@ export default function AlertsFeedPage() {
             );
           })
         )}
+      </div>
       </div>
     </div>
   );

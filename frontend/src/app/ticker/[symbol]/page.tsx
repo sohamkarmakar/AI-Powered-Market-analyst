@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PriceChart from "@/components/PriceChart";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
+import TopBar from "@/components/TopBar";
 import {
   ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown,
   Activity, BarChart2, Newspaper, Users, Target,
@@ -239,9 +240,23 @@ export default function TickerDeepDivePage() {
   // Render
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col flex-1 h-full overflow-hidden">
+    <div className="flex flex-col flex-1 h-full overflow-hidden bg-bg-primary">
+      <TopBar 
+        title={tickerInfo?.symbol || symbol} 
+        subtitle={tickerInfo?.name || "Ticker Deep-Dive"} 
+        icon={<TrendingUp className="w-4 h-4 text-accent-primary" />} 
+        actions={
+          <div className="w-48 sm:w-64">
+            <SearchAutocomplete
+              placeholder="Search symbol…"
+              initialValue={symbol}
+              onSelect={(sym) => router.push(`/ticker/${sym}`)}
+            />
+          </div>
+        }
+      />
       {/* ── Sticky Header ──────────────────────────────────── */}
-      <div className="shrink-0 bg-bg-primary border-b border-border-primary px-6 pt-5 pb-0">
+      <div className="shrink-0 bg-bg-primary border-b border-border-primary px-4 sm:px-6 pt-5 pb-0">
         {/* Search + symbol row */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
           <div>
@@ -265,13 +280,6 @@ export default function TickerDeepDivePage() {
               </div>
             )}
             {tickerInfo?.name && <p className="text-xs text-text-secondary mt-0.5">{tickerInfo.name}</p>}
-          </div>
-          <div className="w-full md:w-72">
-            <SearchAutocomplete
-              placeholder="Search symbol…"
-              initialValue={symbol}
-              onSelect={(sym) => router.push(`/ticker/${sym}`)}
-            />
           </div>
         </div>
 
