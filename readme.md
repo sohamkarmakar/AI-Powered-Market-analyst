@@ -4,13 +4,13 @@ Market Rover is a premium, AI-powered equity analysis and portfolio management p
 
 ## Screenshots
 <div align="center">
-  <img src="assets/screenshot1.png" alt="Market Overview" width="49%">
-  <img src="assets/screenshot2.png" alt="Market Top Losers & Gainers" width="49%">
-  <img src="assets/screenshot3.png" alt="Portfolio Dashboard" width="49%">
-  <img src="assets/screenshot4.png" alt="Ticker Deep-Dive Price Chart" width="49%">
-  <img src="assets/screenshot6.png" alt="Ticker Fundamentals & Peer Comparison" width="49%">
-  <img src="assets/screenshot7.png" alt="Intraday Screener" width="49%">
-  <img src="assets/screenshot8.png" alt="Watchlist" width="80%">
+  <img src="assets/screenshot1.png" alt="Market Overview" width="90%">
+  <img src="assets/screenshot2.png" alt="Market Top Losers & Gainers" width="90%">
+  <img src="assets/screenshot3.png" alt="Portfolio Dashboard" width="90%">
+  <img src="assets/screenshot4.png" alt="Ticker Deep-Dive Price Chart" width="90%">
+  <img src="assets/screenshot6.png" alt="Ticker Fundamentals & Peer Comparison" width="90%">
+  <img src="assets/screenshot7.png" alt="Intraday Screener" width="90%">
+  <img src="assets/screenshot8.png" alt="Watchlist" width="90%">
 </div>
 
 
