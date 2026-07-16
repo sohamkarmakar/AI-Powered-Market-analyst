@@ -300,7 +300,7 @@ export default function TickerDeepDivePage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                   </span>
-                  <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest">Live · 10s</span>
+                  <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest">Live · Updates every 10s</span>
                 </div>
               )}
               <div className={`text-3xl font-mono font-bold transition-colors ${priceFlash === "up" ? "flash-up" : priceFlash === "down" ? "flash-down" : "text-text-primary"}`}>

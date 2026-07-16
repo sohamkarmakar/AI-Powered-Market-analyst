@@ -123,36 +123,6 @@ export default function PortfolioDashboard({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-text-primary">{portfolioName}</h2>
-          <p className="text-sm text-text-muted">
-            {summary.num_holdings} holdings · {summary.num_sectors} sectors · Updated just now
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onUpload}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border-primary rounded-lg transition-all hover:border-accent-primary/40"
-          >
-            <Upload className="w-3.5 h-3.5" /> Upload
-          </button>
-          <button
-            onClick={onAddManual}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border-primary rounded-lg transition-all hover:border-accent-primary/40"
-          >
-            <PlusCircle className="w-3.5 h-3.5" /> Add
-          </button>
-          <button
-            onClick={() => fetchAnalysis(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-accent-primary border border-accent-primary/30 rounded-lg hover:bg-accent-primary/10 transition-all"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
-          </button>
-        </div>
-      </div>
-
       {/* Summary Cards */}
       <SummaryCards summary={summary} />
 
@@ -162,20 +132,28 @@ export default function PortfolioDashboard({
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border-primary">
-        {(["overview", "holdings"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px capitalize ${
-              activeTab === tab
-                ? "border-accent-primary text-accent-primary"
-                : "border-transparent text-text-muted hover:text-text-primary"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="flex items-center justify-between border-b border-border-primary">
+        <div className="flex gap-1">
+          {(["overview", "holdings"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px capitalize ${
+                activeTab === tab
+                  ? "border-accent-primary text-accent-primary"
+                  : "border-transparent text-text-muted hover:text-text-primary"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => fetchAnalysis(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 mb-1 text-xs text-text-secondary hover:text-accent-primary hover:bg-bg-tertiary rounded-lg transition-all"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+        </button>
       </div>
 
       {/* Overview Tab */}

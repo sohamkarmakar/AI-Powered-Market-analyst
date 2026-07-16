@@ -57,8 +57,8 @@ class GeminiService:
             try:
                 genai.configure(api_key=api_key)
                 self.is_configured = True
-                # Using gemini-3.5-flash as the default model
-                self.model_name = "gemini-3.5-flash"
+                # Using gemini-3.1-flash-lite as the default model
+                self.model_name = "gemini-3.1-flash-lite"
                 logger.info(f"Gemini service initialized using model {self.model_name}.")
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini: {str(e)}")
