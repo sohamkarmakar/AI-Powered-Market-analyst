@@ -12,6 +12,7 @@ All indicator functions are pure (OHLCV list → value dict) so they can be
 reused by the Ticker Deep-Dive page without duplication.
 """
 
+from app.services.yfinance_service import yf_session
 import json
 import logging
 import os
@@ -87,7 +88,7 @@ def _fetch_one_ohlcv(symbol: str, interval: str, period: str) -> Tuple[str, Opti
         return symbol, cached["candles"]
 
     try:
-        ticker = yf.Ticker(symbol)
+        ticker = yf.Ticker(symbol, session=yf_session)
         df = ticker.history(period=period, interval=interval)
         if df.empty:
             return symbol, None

@@ -60,7 +60,7 @@ def get_live_quote(symbol: str) -> Dict[str, Any]:
     symbol_upper = normalize_symbol(symbol.upper())
     try:
         import yfinance as yf
-        ticker = yf.Ticker(symbol_upper)
+        ticker = yf.Ticker(symbol_upper, session=yf_session)
         fi = ticker.fast_info
         info = {}
         try:
@@ -160,7 +160,7 @@ def get_batch_quotes(symbols: str = Query(..., description="Comma-separated symb
 
     def fetch_one(sym: str) -> Dict[str, Any]:
         try:
-            ticker = yf.Ticker(sym)
+            ticker = yf.Ticker(sym, session=yf_session)
             # Pull lightweight fundamentals from info only once
             info = {}
             try:
@@ -260,7 +260,7 @@ def get_intraday(symbol: str, period: str = "5d") -> Dict[str, Any]:
     try:
         import yfinance as yf
         import pandas as pd
-        ticker = yf.Ticker(symbol_upper)
+        ticker = yf.Ticker(symbol_upper, session=yf_session)
         df = ticker.history(period=period, interval="5m")
         if df.empty:
             return {"symbol": symbol_upper, "candles": []}
@@ -309,7 +309,7 @@ def get_indices() -> Dict[str, Any]:
 
     def fetch_index(label: str, sym: str) -> Dict[str, Any]:
         try:
-            t = yf.Ticker(sym)
+            t = yf.Ticker(sym, session=yf_session)
             fi = t.fast_info
             price = getattr(fi, "last_price", None)
             prev  = getattr(fi, "previous_close", None)
@@ -371,7 +371,7 @@ def get_ticker_tape() -> Dict[str, Any]:
 
     def fetch_item(label: str, sym: str) -> Dict[str, Any]:
         try:
-            t = yf.Ticker(sym)
+            t = yf.Ticker(sym, session=yf_session)
             fi = t.fast_info
             price = getattr(fi, "last_price", None)
             prev  = getattr(fi, "previous_close", None)
@@ -567,7 +567,7 @@ def get_sector_heatmap() -> Dict[str, Any]:
     stock_quotes = {}
     def fetch_stock_quote(sym: str):
         try:
-            t = yf.Ticker(sym)
+            t = yf.Ticker(sym, session=yf_session)
             fi = t.fast_info
             price = getattr(fi, "last_price", None)
             prev = getattr(fi, "previous_close", None)
@@ -590,7 +590,7 @@ def get_sector_heatmap() -> Dict[str, Any]:
     sector_sparklines = {}
     def fetch_sparkline(sector_name: str, index_sym: str):
         try:
-            t = yf.Ticker(index_sym)
+            t = yf.Ticker(index_sym, session=yf_session)
             df = t.history(period="1d", interval="5m")
             if df.empty:
                 df = t.history(period="5d", interval="15m")
@@ -663,7 +663,7 @@ def get_gainers_losers() -> Dict[str, Any]:
     stocks_data = []
     def fetch_stock_full(sym: str):
         try:
-            t = yf.Ticker(sym)
+            t = yf.Ticker(sym, session=yf_session)
             fi = t.fast_info
             name = sym.replace(".NS", "")
             price = getattr(fi, "last_price", None)
@@ -926,7 +926,7 @@ def get_fundamentals(symbol: str) -> Dict[str, Any]:
     sym = normalize_symbol(symbol.upper())
     try:
         import yfinance as yf
-        t = yf.Ticker(sym)
+        t = yf.Ticker(sym, session=yf_session)
         fi = t.fast_info
         info = t.info or {}
 
@@ -995,7 +995,7 @@ def get_earnings(symbol: str) -> Dict[str, Any]:
     try:
         import yfinance as yf
         import pandas as pd
-        t = yf.Ticker(sym)
+        t = yf.Ticker(sym, session=yf_session)
 
         def _safe_float(val):
             try:
@@ -1091,7 +1091,7 @@ def get_holders(symbol: str) -> Dict[str, Any]:
     try:
         import yfinance as yf
         import pandas as pd
-        t = yf.Ticker(sym)
+        t = yf.Ticker(sym, session=yf_session)
         info = t.info or {}
 
         major: List[Dict] = []
@@ -1147,7 +1147,7 @@ def get_recommendations(symbol: str) -> Dict[str, Any]:
     sym = normalize_symbol(symbol.upper())
     try:
         import yfinance as yf
-        t = yf.Ticker(sym)
+        t = yf.Ticker(sym, session=yf_session)
         info = t.info or {}
 
         trend = {"strong_buy": 0, "buy": 0, "hold": 0, "sell": 0, "strong_sell": 0}
@@ -1188,7 +1188,7 @@ def get_ticker_news(symbol: str) -> Dict[str, Any]:
     sym = normalize_symbol(symbol.upper())
     try:
         import yfinance as yf
-        t = yf.Ticker(sym)
+        t = yf.Ticker(sym, session=yf_session)
         raw_news = t.news or []
         articles = []
         for item in raw_news[:20]:
@@ -1256,7 +1256,7 @@ def get_peers(symbol: str) -> Dict[str, Any]:
     sym = normalize_symbol(symbol.upper())
     try:
         import yfinance as yf
-        t = yf.Ticker(sym)
+        t = yf.Ticker(sym, session=yf_session)
         info = t.info or {}
         sector = info.get("sector", "")
 
@@ -1266,7 +1266,7 @@ def get_peers(symbol: str) -> Dict[str, Any]:
 
         def fetch_peer(s: str) -> Dict[str, Any]:
             try:
-                pt = yf.Ticker(s)
+                pt = yf.Ticker(s, session=yf_session)
                 fi = pt.fast_info
                 pi = pt.info or {}
                 price = getattr(fi, "last_price", None)
