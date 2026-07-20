@@ -61,7 +61,7 @@ export default function SearchAutocomplete({
     const delayDebounce = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/search?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/search?q=${encodeURIComponent(query.trim())}`);
         if (res.ok) {
           const data = await res.json();
           setSuggestions(data.results || []);

@@ -42,7 +42,7 @@ const TIMEFRAMES = [
   { key: "1y",   label: "1Y",  period: "1y",   interval: "1d"  },
 ];
 
-const API = "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 function cssVar(name: string): string {
   if (typeof window === "undefined") return "";

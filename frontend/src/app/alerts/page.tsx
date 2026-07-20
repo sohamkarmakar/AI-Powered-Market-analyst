@@ -40,7 +40,7 @@ export default function AlertsFeedPage() {
 
         for (const sym of activeSymbols) {
           try {
-            const indRes = await fetch(`http://127.0.0.1:8000/api/ticker/${sym}/indicators`);
+            const indRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/ticker/${sym}/indicators`);
             if (indRes.ok) {
               const indData = await indRes.json();
               const indicatorsList = indData.indicators;

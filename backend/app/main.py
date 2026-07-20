@@ -25,8 +25,10 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
-        "http://127.0.0.1:3001"
+        "http://127.0.0.1:3001",
+        "https://market-rover.pages.dev",
     ],
+    allow_origin_regex=r"https://.*market-rover\.(pages\.dev|workers\.dev)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

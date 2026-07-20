@@ -66,7 +66,7 @@ type FlashDir = "up" | "down";
 // Helpers
 // ─────────────────────────────────────────────────────────
 
-const API = "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 const DEFAULT_WATCHLIST = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN", "BHARTIARTL", "WIPRO", "ADANIENT", "LTIM"];
 
 function normBase(s: string) { return s.toUpperCase().replace(/\.(NS|BO)$/, ""); }

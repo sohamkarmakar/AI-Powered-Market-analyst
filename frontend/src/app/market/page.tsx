@@ -44,7 +44,7 @@ interface MarketPulseData {
   macro_trends?: string[];
 }
 
-const API = "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const FALLBACK_PULSE: MarketPulseData = {
   market_condition: "BULLISH",

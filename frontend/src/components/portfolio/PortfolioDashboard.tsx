@@ -12,7 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
 } from "recharts";
 
-const API = "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const fmt = (n: number | null | undefined, decimals = 2) =>
   n == null ? "—" : n.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

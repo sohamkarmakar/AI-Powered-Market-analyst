@@ -12,7 +12,7 @@ interface SectorData {
   sparkline?: number[];
 }
 
-const API = "http://127.0.0.1:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 // Helper to generate SVG polyline points from prices array
 function getSparklinePoints(prices: number[] | undefined, width: number = 120, height: number = 24): string {
