@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "frontend",
+	"name": "market-rover",
 	"build": {
 		"command": "npm run build:cf"
 	},
@@ -19,7 +19,7 @@
 			// Self-reference service binding, the service name must match the worker name
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "frontend"
+			"service": "market-rover"
 		}
 	],
 	"images": {
