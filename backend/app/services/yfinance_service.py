@@ -2,6 +2,19 @@ import yfinance as yf
 import pandas as pd
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+import requests
+
+def get_yf_session():
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive'
+    })
+    return session
+
+_yf_session = get_yf_session()
 
 def normalize_symbol(symbol: str) -> str:
     symbol = symbol.upper().strip()
@@ -19,7 +32,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol)
+            ticker = yf.Ticker(normalized_symbol, session=_yf_session)
             info = ticker.info
             
             if not info or 'symbol' not in info:
@@ -50,7 +63,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol)
+            ticker = yf.Ticker(normalized_symbol, session=_yf_session)
             df = ticker.history(period=period, interval=interval)
             
             if df.empty:
@@ -91,7 +104,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol)
+            ticker = yf.Ticker(normalized_symbol, session=_yf_session)
             raw_news = ticker.news
             
             news_items = []
