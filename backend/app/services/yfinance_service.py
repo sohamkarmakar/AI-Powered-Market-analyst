@@ -7,6 +7,17 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from cachetools import TTLCache
+import logging
+from app.services.supabase_service import supabase_service
+from datetime import datetime, timezone, timedelta
+
+logger = logging.getLogger(__name__)
+
+# L1 In-Memory Caches
+_info_cache = TTLCache(maxsize=1000, ttl=900)  # 15 minutes
+_ohlcv_cache = TTLCache(maxsize=2000, ttl=900) # 15 minutes
+
 def get_yf_session():
     session = requests.Session()
     
@@ -40,18 +51,47 @@ class YFinanceService:
         """
         Fetch company profile and fundamental data for a given ticker.
         """
+        normalized_symbol = normalize_symbol(symbol)
+        
+        # 1. Check L1 Cache
+        if normalized_symbol in _info_cache:
+            return _info_cache[normalized_symbol]
+
+        # 2. Check L2 Cache (Supabase)
         try:
-            normalized_symbol = normalize_symbol(symbol)
+            if supabase_service.is_configured:
+                res = supabase_service.client.table("tickers").select("*").eq("symbol", normalized_symbol).execute()
+                if res.data:
+                    db_ticker = res.data[0]
+                    updated_at_str = db_ticker.get("updated_at")
+                    if updated_at_str:
+                        updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                        # Use L2 if updated within last 24 hours
+                        if datetime.now(timezone.utc) - updated_at < timedelta(hours=24):
+                            info_result = {
+                                "symbol": db_ticker["symbol"],
+                                "name": db_ticker["name"],
+                                "sector": db_ticker["sector"],
+                                "industry": db_ticker["industry"],
+                                "market_cap": db_ticker.get("market_cap"),
+                                "pe_ratio": db_ticker.get("pe_ratio"),
+                                "description": db_ticker.get("description"),
+                                "currency": "INR"
+                            }
+                            _info_cache[normalized_symbol] = info_result
+                            return info_result
+        except Exception as e:
+            logger.error(f"L2 Cache read error for {normalized_symbol}: {e}")
+
+        # 3. Fetch from Yahoo Finance
+        try:
             ticker = yf.Ticker(normalized_symbol, session=yf_session)
             info = ticker.info
             
             if not info or 'symbol' not in info:
-                # If yfinance returned empty dict or invalid ticker
                 raise ValueError(f"Ticker {normalized_symbol} not found or has no info.")
 
-            # Map yfinance info keys to our expected structure
-            # Handle float conversions and defaults
-            return {
+            info_result = {
                 "symbol": info.get("symbol", normalized_symbol).upper(),
                 "name": info.get("longName") or info.get("shortName") or normalized_symbol.upper(),
                 "sector": info.get("sector", "N/A"),
@@ -61,6 +101,18 @@ class YFinanceService:
                 "description": info.get("longBusinessSummary", "No description available."),
                 "currency": info.get("currency", "USD")
             }
+
+            # Save to L1
+            _info_cache[normalized_symbol] = info_result
+
+            # Save to L2
+            try:
+                if supabase_service.is_configured:
+                    supabase_service.upsert_ticker(info_result)
+            except Exception as e:
+                logger.error(f"L2 Cache write error for {normalized_symbol}: {e}")
+
+            return info_result
         except Exception as e:
             raise ValueError(f"Failed to fetch info for {symbol}: {str(e)}")
 
@@ -68,24 +120,42 @@ class YFinanceService:
     def get_ohlcv(symbol: str, period: str = "1y", interval: str = "1d") -> List[Dict[str, Any]]:
         """
         Fetch historical OHLCV data for a ticker.
-        Periods: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
-        Intervals: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
         """
+        normalized_symbol = normalize_symbol(symbol)
+        cache_key = f"{normalized_symbol}_{period}_{interval}"
+        
+        # 1. Check L1 Cache
+        if cache_key in _ohlcv_cache:
+            return _ohlcv_cache[cache_key]
+
+        # 2. Check L2 Cache for 1y/1d historical
+        if period == "1y" and interval == "1d":
+            try:
+                if supabase_service.is_configured:
+                    res = supabase_service.client.table("price_history").select("*").eq("ticker_symbol", normalized_symbol).order("date", desc=True).limit(250).execute()
+                    if res.data and len(res.data) > 200:
+                        # Verify freshness (is the latest date recent?)
+                        latest_date_str = res.data[0]["date"]
+                        latest_date = datetime.strptime(latest_date_str, "%Y-%m-%d").date()
+                        if (datetime.utcnow().date() - latest_date).days <= 2:
+                            # Valid cache
+                            history = list(reversed(res.data))
+                            _ohlcv_cache[cache_key] = history
+                            return history
+            except Exception as e:
+                logger.error(f"L2 Cache ohlcv read error for {normalized_symbol}: {e}")
+
+        # 3. Fetch from Yahoo Finance
         try:
-            normalized_symbol = normalize_symbol(symbol)
             ticker = yf.Ticker(normalized_symbol, session=yf_session)
             df = ticker.history(period=period, interval=interval)
             
             if df.empty:
                 raise ValueError(f"No price history found for ticker {normalized_symbol} for period {period}.")
             
-            # Reset index to make Date a column
             df = df.reset_index()
-            
-            # Convert date to ISO string
             history = []
             for _, row in df.iterrows():
-                # Handle different datetime/date types in pandas index
                 dt = row['Date']
                 if hasattr(dt, 'to_pydatetime'):
                     date_str = dt.to_pydatetime().strftime('%Y-%m-%d')
@@ -103,6 +173,17 @@ class YFinanceService:
                     "volume": int(row["Volume"])
                 })
             
+            # Save to L1
+            _ohlcv_cache[cache_key] = history
+
+            # Save to L2 (only 1d interval)
+            if interval == "1d":
+                try:
+                    if supabase_service.is_configured:
+                        supabase_service.upsert_price_history(normalized_symbol, history)
+                except Exception as e:
+                    logger.error(f"L2 Cache ohlcv write error for {normalized_symbol}: {e}")
+
             return history
         except Exception as e:
             raise ValueError(f"Failed to fetch price history for {symbol}: {str(e)}")

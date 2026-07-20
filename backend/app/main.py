@@ -233,7 +233,7 @@ def get_batch_quotes(symbols: str = Query(..., description="Comma-separated symb
             return {"symbol": sym, "error": str(ex)}
 
     results = {}
-    with ThreadPoolExecutor(max_workers=min(len(normalized), 10)) as executor:
+    with ThreadPoolExecutor(max_workers=min(len(normalized), 20)) as executor:
         future_to_sym = {executor.submit(fetch_one, sym): sym for sym in normalized}
         for future in as_completed(future_to_sym):
             sym = future_to_sym[future]
@@ -342,22 +342,19 @@ def get_indices() -> Dict[str, Any]:
 # ─────────────────────────────────────────────
 # GLOBAL TICKER TAPE
 # ─────────────────────────────────────────────
-_ticker_tape_cache = None
-_ticker_tape_cached_time = 0
+from cachetools import TTLCache
+_ticker_tape_cache = TTLCache(maxsize=1, ttl=30)
 
 @app.get("/api/market/ticker-tape")
 def get_ticker_tape() -> Dict[str, Any]:
     """
     Returns live quotes for global indices, currencies, and commodities for the ticker tape.
     """
-    global _ticker_tape_cache, _ticker_tape_cached_time
-    import time
+    if "tape" in _ticker_tape_cache:
+        return _ticker_tape_cache["tape"]
+
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import yfinance as yf
-
-    now = time.time()
-    if _ticker_tape_cache and (now - _ticker_tape_cached_time < 30):
-        return _ticker_tape_cache
 
     tape_map = {
         "DOW 30": "^DJI",
@@ -398,9 +395,9 @@ def get_ticker_tape() -> Dict[str, Any]:
     for lbl in tape_map:
         results.append(done.get(lbl, {"label": lbl, "symbol": tape_map[lbl]}))
 
-    _ticker_tape_cache = {"tape": results}
-    _ticker_tape_cached_time = now
-    return _ticker_tape_cache
+    result_dict = {"tape": results}
+    _ticker_tape_cache["tape"] = result_dict
+    return result_dict
 
 
 # ─────────────────────────────────────────────
@@ -430,8 +427,7 @@ SECTOR_INDEX_MAP = {
     "Real Estate": "^CNXREALTY"
 }
 
-_sectors_cache = None
-_sectors_cached_time = 0
+
 
 @app.get("/api/market/sectors/constituents")
 def get_sector_constituents() -> Dict[str, List[str]]:
@@ -511,9 +507,6 @@ _NIFTY_SMALLCAP_250 = list(set(_NIFTY_SMALLCAP_100 + [
     "ASHAPURI.NS", "ASHCO.NS", "ASHIANA.NS", "ASHIRVAD.NS", "ASIANTILES.NS",
     "ASIANSTARS.NS", "ASMAN.NS", "ASMS.NS", "ASMTEC.NS", "ASPIRE.NS",
     "ASREPS.NS", "ASSEMBLAGE.NS", "ASSETGUARD.NS", "ASSETWORKS.NS", "ATAM.NS",
-    "ATEN.NS", "ATLAS.NS", "ATLASEQUIP.NS", "ATMA.NS", "ATMOSPHE.NS",
-]))
-
 _NIFTY_LARGEMIDCAP_250 = list(set(_NIFTY_50 + _NIFTY_NEXT_50 + _NIFTY_MIDCAP_150))
 
 UNIVERSE_CONSTITUENTS: Dict[str, List[str]] = {
@@ -547,16 +540,15 @@ def get_universe_constituents(name: str) -> Dict[str, Any]:
     symbols = UNIVERSE_CONSTITUENTS[decoded]
     return {"name": decoded, "count": len(symbols), "symbols": symbols}
 
+_sectors_cache = TTLCache(maxsize=1, ttl=30)
+
 @app.get("/api/market/sectors")
 def get_sector_heatmap() -> Dict[str, Any]:
-    global _sectors_cache, _sectors_cached_time
-    import time
+    if "sectors" in _sectors_cache:
+        return _sectors_cache["sectors"]
+
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import yfinance as yf
-
-    now = time.time()
-    if _sectors_cache and (now - _sectors_cached_time < 30):
-        return _sectors_cache
 
     # 1. Fetch all stock quotes to aggregate sector changes
     all_stocks = set()
@@ -633,27 +625,23 @@ def get_sector_heatmap() -> Dict[str, Any]:
             "sparkline": sector_sparklines.get(sector_name, [])
         })
 
-    _sectors_cache = {"sectors": sectors_result}
-    _sectors_cached_time = now
-    return _sectors_cache
+    result_dict = {"sectors": sectors_result}
+    _sectors_cache["sectors"] = result_dict
+    return result_dict
 
 
 # ─────────────────────────────────────────────
 # TOP GAINERS / LOSERS / ACTIVE
 # ─────────────────────────────────────────────
-_gainers_losers_cache = None
-_gainers_losers_cached_time = 0
+_gainers_losers_cache = TTLCache(maxsize=1, ttl=300)
 
 @app.get("/api/market/gainers-losers")
 def get_gainers_losers() -> Dict[str, Any]:
-    global _gainers_losers_cache, _gainers_losers_cached_time
-    import time
+    if "data" in _gainers_losers_cache:
+        return _gainers_losers_cache["data"]
+
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import yfinance as yf
-
-    now = time.time()
-    if _gainers_losers_cache and (now - _gainers_losers_cached_time < 300): # 5 min cache
-        return _gainers_losers_cache
 
     all_stocks = set()
     for constituents in SECTOR_CONSTITUENTS.values():
@@ -698,13 +686,13 @@ def get_gainers_losers() -> Dict[str, Any]:
     losers = sorted([s for s in stocks_data if s["change_pct"] < 0], key=lambda x: x["change_pct"])[:5]
     active = sorted(stocks_data, key=lambda x: x["volume"], reverse=True)[:5]
 
-    _gainers_losers_cache = {
+    result_dict = {
         "gainers": gainers,
         "losers": losers,
         "active": active
     }
-    _gainers_losers_cached_time = now
-    return _gainers_losers_cache
+    _gainers_losers_cache["data"] = result_dict
+    return result_dict
 
 
 # ─────────────────────────────────────────────

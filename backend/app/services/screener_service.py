@@ -75,55 +75,39 @@ def list_universes() -> Dict[str, int]:
     return result
 
 
+from app.services.yfinance_service import YFinanceService
+
 # ─────────────────────────────────────────────────────────────────────────────
 # BATCH OHLCV FETCHER
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fetch_one_ohlcv(symbol: str, interval: str, period: str) -> Tuple[str, Optional[List[Dict]]]:
-    """Fetch OHLCV candles for a single symbol. Returns (symbol, candles_or_None)."""
-    cache_key = f"{symbol}|{interval}"
-    ttl = CACHE_TTL.get(interval, 60)
-    cached = _ohlcv_cache.get(cache_key)
-    if cached and (time.time() - cached["fetched_at"]) < ttl:
-        return symbol, cached["candles"]
-
+    """Fetch OHLCV candles for a single symbol using YFinanceService."""
     try:
-        ticker = yf.Ticker(symbol, session=yf_session)
-        df = ticker.history(period=period, interval=interval)
-        if df.empty:
+        raw_candles = YFinanceService.get_ohlcv(symbol, period=period, interval=interval)
+        if not raw_candles:
             return symbol, None
-
-        df = df.reset_index()
+            
         candles = []
-        for _, row in df.iterrows():
-            dt = row.get("Datetime") or row.get("Date")
-            if dt is None:
-                continue
-            ts = dt.to_pydatetime().isoformat() if hasattr(dt, "to_pydatetime") else str(dt)
+        for c in raw_candles:
             candles.append({
-                "t": ts,
-                "o": round(float(row["Open"]), 4),
-                "h": round(float(row["High"]), 4),
-                "l": round(float(row["Low"]), 4),
-                "c": round(float(row["Close"]), 4),
-                "v": int(row["Volume"]),
+                "t": c["date"],
+                "o": round(c["open"], 4),
+                "h": round(c["high"], 4),
+                "l": round(c["low"], 4),
+                "c": round(c["close"], 4),
+                "v": c["volume"]
             })
-
-        _ohlcv_cache[cache_key] = {"candles": candles, "fetched_at": time.time()}
         return symbol, candles
     except Exception as e:
         logger.warning(f"OHLCV fetch failed for {symbol}: {e}")
-        # Return stale cache if available
-        if cached:
-            return symbol, cached["candles"]
         return symbol, None
-
 
 def fetch_universe_ohlcv(
     symbols: List[str],
     interval: str = "5m",
     period: str = "1d",
-    max_workers: int = 10,
+    max_workers: int = 50,
 ) -> Dict[str, Optional[List[Dict]]]:
     """
     Batch-fetch intraday OHLCV for a list of symbols.
@@ -137,15 +121,9 @@ def fetch_universe_ohlcv(
             result[sym] = candles
     return result
 
-
 def get_cache_ages(symbols: List[str], interval: str) -> Dict[str, Optional[float]]:
-    """Return age in seconds of cached OHLCV data per symbol, or None if not cached."""
-    now = time.time()
-    return {
-        sym: (now - _ohlcv_cache[f"{sym}|{interval}"]["fetched_at"])
-        if f"{sym}|{interval}" in _ohlcv_cache else None
-        for sym in symbols
-    }
+    """Return age in seconds of cached OHLCV data per symbol. Replaced by YFinanceService cache."""
+    return {sym: 0.0 for sym in symbols}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
