@@ -28,7 +28,7 @@ app.add_middleware(
         "http://127.0.0.1:3001",
         "https://market-rover.pages.dev",
     ],
-    allow_origin_regex=r"https://.*market-rover\.(pages\.dev|workers\.dev)",
+    allow_origin_regex=r"https://.*market-rover\..*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
