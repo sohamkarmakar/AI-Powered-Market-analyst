@@ -5,7 +5,7 @@ import uvicorn
 import asyncio
 
 from app.config import settings
-from app.services.yfinance_service import YFinanceService, normalize_symbol
+from app.services.yfinance_service import YFinanceService, normalize_symbol, yf_session
 from app.services.supabase_service import supabase_service
 from app.services.indicators_service import IndicatorsService
 from app.services.gemini_service import gemini_service
@@ -768,7 +768,7 @@ def get_ticker_data(symbol: str, period: str = "1y", interval: str = "1d") -> Di
 
         # ── Enrich info with live fast_info fields ─────────────────────────
         try:
-            t  = yf.Ticker(symbol_upper)
+            t  = yf.Ticker(symbol_upper, session=yf_session)
             fi = t.fast_info
             raw_info = t.info or {}
 

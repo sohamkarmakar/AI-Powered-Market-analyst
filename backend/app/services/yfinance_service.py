@@ -14,7 +14,7 @@ def get_yf_session():
     })
     return session
 
-_yf_session = get_yf_session()
+yf_session = get_yf_session()
 
 def normalize_symbol(symbol: str) -> str:
     symbol = symbol.upper().strip()
@@ -32,7 +32,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol, session=_yf_session)
+            ticker = yf.Ticker(normalized_symbol, session=yf_session)
             info = ticker.info
             
             if not info or 'symbol' not in info:
@@ -63,7 +63,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol, session=_yf_session)
+            ticker = yf.Ticker(normalized_symbol, session=yf_session)
             df = ticker.history(period=period, interval=interval)
             
             if df.empty:
@@ -104,7 +104,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol, session=_yf_session)
+            ticker = yf.Ticker(normalized_symbol, session=yf_session)
             raw_news = ticker.news
             
             news_items = []
