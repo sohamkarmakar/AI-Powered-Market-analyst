@@ -4,6 +4,8 @@ from typing import Dict, Any, Optional, List
 import uvicorn
 import asyncio
 import requests.adapters
+import pandas as pd
+from cachetools import TTLCache
 
 requests.adapters.DEFAULT_POOLSIZE = 100
 
@@ -294,12 +296,16 @@ def get_intraday(symbol: str, period: str = "5d") -> Dict[str, Any]:
 # INDICES — NIFTY 50, SENSEX, BANK NIFTY, INDIA VIX strip
 # ─────────────────────────────────────────────
 
+_indices_cache = TTLCache(maxsize=1, ttl=60)
+
 @app.get("/api/indices")
 def get_indices() -> Dict[str, Any]:
     """
     Returns live quotes for major Indian indices for the top bar strip.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    if "indices" in _indices_cache:
+        return _indices_cache["indices"]
+
     import yfinance as yf
 
     index_map = {
@@ -310,43 +316,56 @@ def get_indices() -> Dict[str, Any]:
         "INDIA VIX":  "^INDIAVIX",
     }
 
-    def fetch_index(label: str, sym: str) -> Dict[str, Any]:
-        try:
-            t = yf.Ticker(sym)
-            fi = t.fast_info
-            price = getattr(fi, "last_price", None)
-            prev  = getattr(fi, "previous_close", None)
-            change = round(price - prev, 2) if price and prev else None
-            change_pct = round((change / prev) * 100, 2) if change and prev else None
-            return {
-                "label": label,
-                "symbol": sym,
-                "price": round(float(price), 2) if price else None,
-                "change": change,
-                "change_pct": change_pct,
-            }
-        except Exception as ex:
-            return {"label": label, "symbol": sym, "error": str(ex)}
-
     results = []
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(fetch_index, lbl, sym): lbl for lbl, sym in index_map.items()}
-        done = {}
-        for future in as_completed(futures):
-            res = future.result()
-            done[res["label"]] = res
-    # Return in original order
-    for lbl in index_map:
-        results.append(done.get(lbl, {"label": lbl, "symbol": index_map[lbl]}))
+    try:
+        sym_list = list(index_map.values())
+        df = yf.download(sym_list, period="5d", group_by="ticker", progress=False)
+        for label, sym in index_map.items():
+            try:
+                if sym in df and "Close" in df[sym]:
+                    closes = df[sym]["Close"].dropna()
+                    if len(closes) >= 2:
+                        price = float(closes.iloc[-1])
+                        prev = float(closes.iloc[-2])
+                        chg = round(price - prev, 2)
+                        chg_pct = round((chg / prev) * 100, 2) if prev != 0 else 0.0
+                        results.append({
+                            "label": label,
+                            "symbol": sym,
+                            "price": round(price, 2),
+                            "change": chg,
+                            "change_pct": chg_pct,
+                        })
+                    elif len(closes) == 1:
+                        price = float(closes.iloc[-1])
+                        results.append({
+                            "label": label,
+                            "symbol": sym,
+                            "price": round(price, 2),
+                            "change": 0.0,
+                            "change_pct": 0.0,
+                        })
+                    else:
+                        results.append({"label": label, "symbol": sym})
+                else:
+                    results.append({"label": label, "symbol": sym})
+            except Exception:
+                results.append({"label": label, "symbol": sym})
+    except Exception as e:
+        logger.error(f"Indices fetch error: {e}")
+        for label, sym in index_map.items():
+            results.append({"label": label, "symbol": sym})
 
-    return {"indices": results}
+    res_dict = {"indices": results}
+    _indices_cache["indices"] = res_dict
+    return res_dict
 
 
 # ─────────────────────────────────────────────
 # GLOBAL TICKER TAPE
 # ─────────────────────────────────────────────
 from cachetools import TTLCache
-_ticker_tape_cache = TTLCache(maxsize=1, ttl=30)
+_ticker_tape_cache = TTLCache(maxsize=1, ttl=60)
 
 @app.get("/api/market/ticker-tape")
 def get_ticker_tape() -> Dict[str, Any]:
@@ -356,7 +375,6 @@ def get_ticker_tape() -> Dict[str, Any]:
     if "tape" in _ticker_tape_cache:
         return _ticker_tape_cache["tape"]
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
     import yfinance as yf
 
     tape_map = {
@@ -369,34 +387,45 @@ def get_ticker_tape() -> Dict[str, Any]:
         "GOLD": "GC=F"
     }
 
-    def fetch_item(label: str, sym: str) -> Dict[str, Any]:
-        try:
-            t = yf.Ticker(sym)
-            fi = t.fast_info
-            price = getattr(fi, "last_price", None)
-            prev  = getattr(fi, "previous_close", None)
-            change = round(price - prev, 2) if price and prev else None
-            change_pct = round((change / prev) * 100, 2) if change and prev else None
-            return {
-                "label": label,
-                "symbol": sym,
-                "price": round(float(price), 2) if price else None,
-                "change": change,
-                "change_pct": change_pct,
-            }
-        except Exception as ex:
-            return {"label": label, "symbol": sym, "error": str(ex)}
-
     results = []
-    with ThreadPoolExecutor(max_workers=len(tape_map)) as executor:
-        futures = {executor.submit(fetch_item, lbl, sym): lbl for lbl, sym in tape_map.items()}
-        done = {}
-        for future in as_completed(futures):
-            res = future.result()
-            done[res["label"]] = res
-            
-    for lbl in tape_map:
-        results.append(done.get(lbl, {"label": lbl, "symbol": tape_map[lbl]}))
+    try:
+        sym_list = list(tape_map.values())
+        df = yf.download(sym_list, period="5d", group_by="ticker", progress=False)
+        for label, sym in tape_map.items():
+            try:
+                if sym in df and "Close" in df[sym]:
+                    closes = df[sym]["Close"].dropna()
+                    if len(closes) >= 2:
+                        price = float(closes.iloc[-1])
+                        prev = float(closes.iloc[-2])
+                        chg = round(price - prev, 2)
+                        chg_pct = round((chg / prev) * 100, 2) if prev != 0 else 0.0
+                        results.append({
+                            "label": label,
+                            "symbol": sym,
+                            "price": round(price, 2),
+                            "change": chg,
+                            "change_pct": chg_pct,
+                        })
+                    elif len(closes) == 1:
+                        price = float(closes.iloc[-1])
+                        results.append({
+                            "label": label,
+                            "symbol": sym,
+                            "price": round(price, 2),
+                            "change": 0.0,
+                            "change_pct": 0.0,
+                        })
+                    else:
+                        results.append({"label": label, "symbol": sym})
+                else:
+                    results.append({"label": label, "symbol": sym})
+            except Exception:
+                results.append({"label": label, "symbol": sym})
+    except Exception as e:
+        logger.error(f"Ticker tape fetch error: {e}")
+        for label, sym in tape_map.items():
+            results.append({"label": label, "symbol": tape_map[label]})
 
     result_dict = {"tape": results}
     _ticker_tape_cache["tape"] = result_dict
@@ -544,64 +573,88 @@ def get_universe_constituents(name: str) -> Dict[str, Any]:
     symbols = UNIVERSE_CONSTITUENTS[decoded]
     return {"name": decoded, "count": len(symbols), "symbols": symbols}
 
-_sectors_cache = TTLCache(maxsize=1, ttl=30)
+_sectors_cache = TTLCache(maxsize=1, ttl=300)
+_batch_quotes_cache = TTLCache(maxsize=1, ttl=300)
+
+def _get_batch_quotes() -> Dict[str, Dict[str, Any]]:
+    if "quotes" in _batch_quotes_cache:
+        return _batch_quotes_cache["quotes"]
+
+    import yfinance as yf
+
+    all_stocks = set()
+    for constituents in SECTOR_CONSTITUENTS.values():
+        all_stocks.update(constituents)
+    all_stocks_list = list(all_stocks)
+
+    quotes = {}
+    try:
+        df = yf.download(all_stocks_list, period="5d", group_by="ticker", progress=False)
+        for sym in all_stocks_list:
+            try:
+                if sym in df:
+                    s_df = df[sym]
+                else:
+                    continue
+                if "Close" not in s_df:
+                    continue
+                closes = s_df["Close"].dropna()
+                vols = s_df["Volume"].dropna() if "Volume" in s_df else pd.Series()
+                if len(closes) >= 2:
+                    price = float(closes.iloc[-1])
+                    prev = float(closes.iloc[-2])
+                    chg = price - prev
+                    chg_pct = (chg / prev) * 100 if prev != 0 else 0.0
+                    vol = int(vols.iloc[-1]) if len(vols) > 0 else 0
+                    quotes[sym] = {
+                        "price": round(price, 2),
+                        "prev_close": round(prev, 2),
+                        "change": round(chg, 2),
+                        "change_pct": round(chg_pct, 2),
+                        "volume": vol
+                    }
+                elif len(closes) == 1:
+                    price = float(closes.iloc[-1])
+                    quotes[sym] = {
+                        "price": round(price, 2),
+                        "prev_close": round(price, 2),
+                        "change": 0.0,
+                        "change_pct": 0.0,
+                        "volume": int(vols.iloc[-1]) if len(vols) > 0 else 0
+                    }
+            except Exception:
+                pass
+    except Exception as e:
+        logger.error(f"Batch quotes download error: {e}")
+
+    _batch_quotes_cache["quotes"] = quotes
+    return quotes
 
 @app.get("/api/market/sectors")
 def get_sector_heatmap() -> Dict[str, Any]:
     if "sectors" in _sectors_cache:
         return _sectors_cache["sectors"]
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
     import yfinance as yf
 
-    # 1. Fetch all stock quotes to aggregate sector changes
-    all_stocks = set()
-    for constituents in SECTOR_CONSTITUENTS.values():
-        all_stocks.update(constituents)
-    all_stocks = list(all_stocks)
+    stock_quotes = _get_batch_quotes()
 
-    stock_quotes = {}
-    def fetch_stock_quote(sym: str):
-        try:
-            t = yf.Ticker(sym)
-            fi = t.fast_info
-            price = getattr(fi, "last_price", None)
-            prev = getattr(fi, "previous_close", None)
-            vol = getattr(fi, "last_volume", None)
-            
-            change_pct = 0.0
-            if price and prev and prev != 0:
-                change_pct = ((price - prev) / prev) * 100
-            return sym, {"price": price, "prev_close": prev, "change_pct": change_pct, "volume": vol}
-        except Exception:
-            return sym, {"price": None, "prev_close": None, "change_pct": 0.0, "volume": 0}
-
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(fetch_stock_quote, sym) for sym in all_stocks]
-        for f in as_completed(futures):
-            sym, quote = f.result()
-            stock_quotes[sym] = quote
-
-    # 2. Fetch intraday history (sparklines) for the 9 sector indices
+    # 2. Fetch intraday history (sparklines) for the 9 sector indices in 1 bulk call
     sector_sparklines = {}
-    def fetch_sparkline(sector_name: str, index_sym: str):
-        try:
-            t = yf.Ticker(index_sym)
-            df = t.history(period="1d", interval="5m")
-            if df.empty:
-                df = t.history(period="5d", interval="15m")
-            if not df.empty:
-                prices = [round(float(p), 2) for p in df["Close"].dropna().tolist()]
-                return sector_name, prices
-            return sector_name, []
-        except Exception:
-            return sector_name, []
-
-    with ThreadPoolExecutor(max_workers=9) as executor:
-        futures = [executor.submit(fetch_sparkline, name, sym) for name, sym in SECTOR_INDEX_MAP.items()]
-        for f in as_completed(futures):
-            name, prices = f.result()
-            sector_sparklines[name] = prices
+    try:
+        indices_list = list(SECTOR_INDEX_MAP.values())
+        df_ind = yf.download(indices_list, period="5d", interval="15m", group_by="ticker", progress=False)
+        for sector_name, index_sym in SECTOR_INDEX_MAP.items():
+            try:
+                if index_sym in df_ind and "Close" in df_ind[index_sym]:
+                    c_series = df_ind[index_sym]["Close"].dropna()
+                    sector_sparklines[sector_name] = [round(float(p), 2) for p in c_series.tail(20).tolist()]
+                else:
+                    sector_sparklines[sector_name] = []
+            except Exception:
+                sector_sparklines[sector_name] = []
+    except Exception as e:
+        logger.error(f"Sector sparklines fetch error: {e}")
 
     # 3. Aggregate sector metrics
     sectors_result = []
@@ -644,47 +697,19 @@ def get_gainers_losers() -> Dict[str, Any]:
     if "data" in _gainers_losers_cache:
         return _gainers_losers_cache["data"]
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    import yfinance as yf
-
-    all_stocks = set()
-    for constituents in SECTOR_CONSTITUENTS.values():
-        all_stocks.update(constituents)
-    all_stocks = list(all_stocks)
-
+    stock_quotes = _get_batch_quotes()
     stocks_data = []
-    def fetch_stock_full(sym: str):
-        try:
-            t = yf.Ticker(sym)
-            fi = t.fast_info
+    for sym, q in stock_quotes.items():
+        if q.get("price") is not None:
             name = sym.replace(".NS", "")
-            price = getattr(fi, "last_price", None)
-            prev = getattr(fi, "previous_close", None)
-            volume = getattr(fi, "last_volume", None)
-            
-            change = 0.0
-            change_pct = 0.0
-            if price and prev:
-                change = price - prev
-                if prev != 0:
-                    change_pct = (change / prev) * 100
-            return {
-                "symbol": sym.replace(".NS", ""),
+            stocks_data.append({
+                "symbol": name,
                 "name": name,
-                "price": round(float(price), 2) if price else None,
-                "change": round(float(change), 2) if change else 0.0,
-                "change_pct": round(float(change_pct), 2) if change_pct else 0.0,
-                "volume": int(volume) if volume else 0
-            }
-        except Exception:
-            return None
-
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(fetch_stock_full, sym) for sym in all_stocks]
-        for f in as_completed(futures):
-            res = f.result()
-            if res and res["price"] is not None:
-                stocks_data.append(res)
+                "price": q["price"],
+                "change": q.get("change", 0.0),
+                "change_pct": q.get("change_pct", 0.0),
+                "volume": q.get("volume", 0)
+            })
 
     gainers = sorted([s for s in stocks_data if s["change_pct"] > 0], key=lambda x: x["change_pct"], reverse=True)[:5]
     losers = sorted([s for s in stocks_data if s["change_pct"] < 0], key=lambda x: x["change_pct"])[:5]

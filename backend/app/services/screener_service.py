@@ -110,15 +110,64 @@ def fetch_universe_ohlcv(
     max_workers: int = 5,
 ) -> Dict[str, Optional[List[Dict]]]:
     """
-    Batch-fetch intraday OHLCV for a list of symbols.
-    Returns dict: symbol → candles list (or None on failure).
+    Batch-fetch intraday OHLCV for a list of symbols in a single bulk call.
+    Falls back to thread pool if needed.
     """
     result: Dict[str, Optional[List[Dict]]] = {}
-    with ThreadPoolExecutor(max_workers=min(max_workers, len(symbols))) as executor:
-        futures = {executor.submit(_fetch_one_ohlcv, sym, interval, period): sym for sym in symbols}
-        for future in as_completed(futures):
-            sym, candles = future.result()
-            result[sym] = candles
+    if not symbols:
+        return result
+
+    try:
+        import pandas as pd
+        from datetime import datetime
+        df = yf.download(symbols, period=period, interval=interval, group_by="ticker", progress=False)
+        for sym in symbols:
+            try:
+                if len(symbols) == 1:
+                    s_df = df
+                elif sym in df:
+                    s_df = df[sym]
+                else:
+                    continue
+
+                if "Close" not in s_df or s_df.empty:
+                    continue
+
+                s_df = s_df.dropna(subset=["Close"]).reset_index()
+                candles = []
+                for _, row in s_df.iterrows():
+                    dt = row.get("Date") if "Date" in row else row.get("Datetime")
+                    if hasattr(dt, "to_pydatetime"):
+                        date_str = dt.to_pydatetime().strftime("%Y-%m-%d %H:%M:%S") if interval != "1d" else dt.to_pydatetime().strftime("%Y-%m-%d")
+                    elif isinstance(dt, (datetime, pd.Timestamp)):
+                        date_str = dt.strftime("%Y-%m-%d %H:%M:%S") if interval != "1d" else dt.strftime("%Y-%m-%d")
+                    else:
+                        date_str = str(dt)[:19]
+
+                    candles.append({
+                        "t": date_str,
+                        "o": round(float(row["Open"]), 4),
+                        "h": round(float(row["High"]), 4),
+                        "l": round(float(row["Low"]), 4),
+                        "c": round(float(row["Close"]), 4),
+                        "v": int(row["Volume"]) if "Volume" in row and not pd.isna(row["Volume"]) else 0
+                    })
+                if candles:
+                    result[sym] = candles
+            except Exception as ex:
+                logger.warning(f"Bulk OHLCV parse error for {sym}: {ex}")
+    except Exception as e:
+        logger.warning(f"Bulk OHLCV download failed ({e}), falling back to thread pool...")
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(symbols))) as executor:
+            futures = {executor.submit(_fetch_one_ohlcv, sym, interval, period): sym for sym in symbols}
+            for future in as_completed(futures):
+                sym, candles = future.result()
+                result[sym] = candles
+
+    for sym in symbols:
+        if sym not in result:
+            result[sym] = None
+
     return result
 
 def get_cache_ages(symbols: List[str], interval: str) -> Dict[str, Optional[float]]:
