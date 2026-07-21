@@ -1,4 +1,4 @@
-from app.services.yfinance_service import yf_session
+
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -88,7 +88,7 @@ class IndicatorsService:
         }
         
         try:
-            ticker = yf.Ticker(symbol, session=yf_session)
+            ticker = yf.Ticker(symbol)
             # Fetch 5 days of 5m data to ensure we capture the latest complete session (handles weekends/holidays)
             df = ticker.history(period="5d", interval="5m")
             

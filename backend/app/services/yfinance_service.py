@@ -4,9 +4,6 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import requests
 
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
 from cachetools import TTLCache
 import logging
 from app.services.supabase_service import supabase_service
@@ -18,24 +15,6 @@ logger = logging.getLogger(__name__)
 _info_cache = TTLCache(maxsize=1000, ttl=900)  # 15 minutes
 _ohlcv_cache = TTLCache(maxsize=2000, ttl=900) # 15 minutes
 
-def get_yf_session():
-    session = requests.Session()
-    
-    # Increase connection pool size to handle concurrent yfinance requests
-    retry = Retry(connect=3, backoff_factor=0.5)
-    adapter = HTTPAdapter(max_retries=retry, pool_connections=100, pool_maxsize=100)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-    
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Connection': 'keep-alive'
-    })
-    return session
-
-yf_session = get_yf_session()
 
 def normalize_symbol(symbol: str) -> str:
     symbol = symbol.upper().strip()
@@ -85,7 +64,7 @@ class YFinanceService:
 
         # 3. Fetch from Yahoo Finance
         try:
-            ticker = yf.Ticker(normalized_symbol, session=yf_session)
+            ticker = yf.Ticker(normalized_symbol)
             info = ticker.info
             
             if not info or 'symbol' not in info:
@@ -147,7 +126,7 @@ class YFinanceService:
 
         # 3. Fetch from Yahoo Finance
         try:
-            ticker = yf.Ticker(normalized_symbol, session=yf_session)
+            ticker = yf.Ticker(normalized_symbol)
             df = ticker.history(period=period, interval=interval)
             
             if df.empty:
@@ -195,7 +174,7 @@ class YFinanceService:
         """
         try:
             normalized_symbol = normalize_symbol(symbol)
-            ticker = yf.Ticker(normalized_symbol, session=yf_session)
+            ticker = yf.Ticker(normalized_symbol)
             raw_news = ticker.news
             
             news_items = []

@@ -10,7 +10,7 @@ Four responsibilities:
 4. Analysis Engine  — computes allocation, concentration risk, technicals, fundamentals
 """
 
-from app.services.yfinance_service import yf_session
+
 import csv
 import io
 import json
@@ -710,7 +710,7 @@ def _fetch_quote_for_holding(symbol: str) -> Dict[str, Any]:
         import yfinance as yf
         import numpy as np
 
-        ticker = yf.Ticker(symbol, session=yf_session)
+        ticker = yf.Ticker(symbol)
         info = {}
         try:
             info = ticker.info or {}

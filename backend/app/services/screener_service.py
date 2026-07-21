@@ -12,7 +12,7 @@ All indicator functions are pure (OHLCV list → value dict) so they can be
 reused by the Ticker Deep-Dive page without duplication.
 """
 
-from app.services.yfinance_service import yf_session
+
 import json
 import logging
 import os
