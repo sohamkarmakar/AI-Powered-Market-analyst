@@ -1,8 +1,11 @@
-
 import sys
 import os
 import logging
 from datetime import datetime
+
+# Increase requests connection pool size to prevent connection discarding
+import requests.adapters
+requests.adapters.DEFAULT_POOLSIZE = 100
 
 # Adjust sys.path to find 'app' from backend root
 backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,8 +20,8 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 logger = logging.getLogger("daily_analysis_cron")
-
 def run_daily_analysis():
     logger.info("Starting Daily AI Equity Analysis job...")
     

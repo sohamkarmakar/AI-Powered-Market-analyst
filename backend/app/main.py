@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, Optional, List
 import uvicorn
 import asyncio
+import requests.adapters
+
+requests.adapters.DEFAULT_POOLSIZE = 100
 
 from app.config import settings
 from app.services.yfinance_service import YFinanceService, normalize_symbol
