@@ -81,6 +81,9 @@ class SupabaseService:
             res = self.client.table("price_history").upsert(db_records, on_conflict="ticker_symbol,date").execute()
             return res.data
         except Exception as e:
+            if "23503" in str(e):
+                logger.debug(f"Skipping price cache for {ticker_symbol} (ticker not in DB).")
+                return []
             logger.error(f"Supabase upsert_price_history error: {str(e)}")
             raise e
 

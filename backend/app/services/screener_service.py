@@ -107,7 +107,7 @@ def fetch_universe_ohlcv(
     symbols: List[str],
     interval: str = "5m",
     period: str = "1d",
-    max_workers: int = 50,
+    max_workers: int = 5,
 ) -> Dict[str, Optional[List[Dict]]]:
     """
     Batch-fetch intraday OHLCV for a list of symbols.

@@ -576,7 +576,7 @@ def get_sector_heatmap() -> Dict[str, Any]:
         except Exception:
             return sym, {"price": None, "prev_close": None, "change_pct": 0.0, "volume": 0}
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(fetch_stock_quote, sym) for sym in all_stocks]
         for f in as_completed(futures):
             sym, quote = f.result()
@@ -679,7 +679,7 @@ def get_gainers_losers() -> Dict[str, Any]:
         except Exception:
             return None
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(fetch_stock_full, sym) for sym in all_stocks]
         for f in as_completed(futures):
             res = f.result()
