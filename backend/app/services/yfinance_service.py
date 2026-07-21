@@ -125,15 +125,15 @@ class YFinanceService:
                 logger.error(f"L2 Cache ohlcv read error for {normalized_symbol}: {e}")
 
         # 3. Fetch from Yahoo Finance
+        history = []
         try:
             ticker = yf.Ticker(normalized_symbol)
             df = ticker.history(period=period, interval=interval)
             
             if df.empty:
-                raise ValueError(f"No price history found for ticker {normalized_symbol} for period {period}.")
+                raise ValueError("Empty dataframe from yfinance")
             
             df = df.reset_index()
-            history = []
             for _, row in df.iterrows():
                 dt = row['Date']
                 if hasattr(dt, 'to_pydatetime'):
@@ -151,21 +151,55 @@ class YFinanceService:
                     "close": float(row["Close"]),
                     "volume": int(row["Volume"])
                 })
-            
-            # Save to L1
-            _ohlcv_cache[cache_key] = history
-
-            # Save to L2 (only 1d interval)
-            if interval == "1d":
-                try:
-                    if supabase_service.is_configured:
-                        supabase_service.upsert_price_history(normalized_symbol, history)
-                except Exception as e:
-                    logger.error(f"L2 Cache ohlcv write error for {normalized_symbol}: {e}")
-
-            return history
         except Exception as e:
-            raise ValueError(f"Failed to fetch price history for {symbol}: {str(e)}")
+            logger.warning(f"yfinance failed for {normalized_symbol} ({str(e)}), attempting raw HTTP fallback...")
+            try:
+                import httpx
+                url = f"https://query2.finance.yahoo.com/v8/finance/chart/{normalized_symbol}?range={period}&interval={interval}"
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+                r = httpx.get(url, headers=headers, timeout=10.0)
+                r.raise_for_status()
+                data = r.json()
+                result = data.get('chart', {}).get('result')
+                if not result:
+                    raise ValueError("No result in chart data")
+                
+                chart_data = result[0]
+                timestamps = chart_data.get('timestamp', [])
+                quote = chart_data.get('indicators', {}).get('quote', [{}])[0]
+                
+                if not timestamps or not quote:
+                    raise ValueError("Missing timestamp or quote data")
+                
+                for t, o, h, l, c, v in zip(timestamps, quote.get('open', []), quote.get('high', []), quote.get('low', []), quote.get('close', []), quote.get('volume', [])):
+                    if o is not None and c is not None:
+                        dt_obj = datetime.fromtimestamp(t, timezone.utc)
+                        history.append({
+                            "date": dt_obj.strftime('%Y-%m-%d'),
+                            "open": float(o),
+                            "high": float(h),
+                            "low": float(l),
+                            "close": float(c),
+                            "volume": int(v) if v is not None else 0
+                        })
+            except Exception as fallback_e:
+                raise ValueError(f"Failed to fetch price history for {symbol} (yfinance: {str(e)}, fallback: {str(fallback_e)})")
+
+        if not history:
+            raise ValueError(f"No valid price history found for {normalized_symbol}")
+
+        # Save to L1
+        _ohlcv_cache[cache_key] = history
+
+        # Save to L2 (only 1d interval)
+        if interval == "1d":
+            try:
+                if supabase_service.is_configured:
+                    supabase_service.upsert_price_history(normalized_symbol, history)
+            except Exception as e:
+                logger.error(f"L2 Cache ohlcv write error for {normalized_symbol}: {e}")
+
+        return history
 
     @staticmethod
     def get_news(symbol: str) -> List[Dict[str, Any]]:
