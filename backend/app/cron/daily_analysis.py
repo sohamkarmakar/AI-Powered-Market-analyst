@@ -1,4 +1,4 @@
-from app.services.yfinance_service import yf_session
+
 import sys
 import os
 import logging
@@ -99,7 +99,7 @@ def run_daily_analysis():
             vix_val = None
             for lbl, sym in index_map.items():
                 try:
-                    t = yf.Ticker(sym, session=yf_session)
+                    t = yf.Ticker(sym)
                     fi = t.fast_info
                     p = getattr(fi, "last_price", None)
                     prev = getattr(fi, "previous_close", None)
